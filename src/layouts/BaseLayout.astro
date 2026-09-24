@@ -1,0 +1,135 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+const { title, description = 'Notas sobre tecnologia e produtividade.' } = Astro.props;
+---
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content={description} />
+  <title>{title} · mateus siil</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    rel="stylesheet"
+  />
+</head>
+<body>
+  <div class="site">
+    <header class="site-header">
+      <a class="brand" href="/">
+        <span class="brand-name">mateus siil</span>
+        <span class="brand-tag">/blog</span>
+      </a>
+      <nav>
+        <a href="/">posts</a>
+      </nav>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <span>© {new Date().getFullYear()} mateus siil</span>
+      <a href="https://github.com/mateussiil" aria-label="GitHub">github</a>
+    </footer>
+  </div>
+</body>
+</html>
+
+<style is:global>
+  :root {
+    --bg: #fdfcfa;
+    --text: #1c1b19;
+    --text-muted: #6b6862;
+    --border: #e7e4de;
+    --accent: #0f766e;
+    --serif: 'Source Serif 4', Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181a;
+      --text: #e9e7e2;
+      --text-muted: #96938c;
+      --border: #2b2e31;
+      --accent: #2dd4bf;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; }
+
+  .site {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 24px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .site-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 32px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    text-decoration: none;
+  }
+
+  .brand-name {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: 19px;
+  }
+
+  .brand-tag {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+  }
+
+  .site-header nav a {
+    font-size: 14px;
+    text-decoration: none;
+    color: var(--text-muted);
+  }
+
+  main { flex-grow: 1; padding: 40px 0 64px; }
+
+  .site-footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 24px 0 40px;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .site-footer a { text-decoration: none; }
+</style>

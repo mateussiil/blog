@@ -1,0 +1,118 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  return posts.map((post) => ({
+    params: { id: post.id },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+---
+<BaseLayout title={post.data.title} description={post.data.excerpt}>
+  <article>
+    <div class="meta">
+      <time datetime={post.data.date.toISOString()}>
+        {post.data.date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+      </time>
+      {post.data.tags.map((tag) => <span class="tag">{tag}</span>)}
+    </div>
+    <h1>{post.data.title}</h1>
+    <div class="prose">
+      <Content />
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .meta time {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 10px;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 34px;
+    line-height: 1.25;
+    margin: 0 0 32px;
+  }
+
+  .prose {
+    font-size: 17px;
+    line-height: 1.7;
+  }
+
+  .prose :global(h2) {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 24px;
+    margin: 40px 0 16px;
+  }
+
+  .prose :global(p) {
+    margin: 0 0 20px;
+  }
+
+  .prose :global(img) {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 8px 0 24px;
+  }
+
+  .prose :global(video) {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 8px 0 24px;
+  }
+
+  .prose :global(pre) {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.6;
+    padding: 20px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 8px 0 24px;
+  }
+
+  .prose :global(code) {
+    font-family: var(--mono);
+    font-size: 0.9em;
+  }
+
+  .prose :global(p code) {
+    background: var(--border);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .prose :global(blockquote) {
+    margin: 24px 0;
+    padding: 4px 0 4px 20px;
+    border-left: 3px solid var(--accent);
+    color: var(--text-muted);
+    font-style: italic;
+  }
+</style>
