@@ -1,135 +1,206 @@
 ---
+import { copy, LINKS, type Lang } from '../i18n';
+
 interface Props {
   title: string;
   description?: string;
+  lang?: Lang;
+  // Página equivalente no outro idioma (só a home tem hoje).
+  alternate?: string;
+  canonical?: string;
 }
-const { title, description = 'Notas sobre tecnologia e produtividade.' } = Astro.props;
+const { title, description, lang = 'pt', alternate, canonical } = Astro.props;
+const t = copy[lang];
+const other: Lang = lang === 'pt' ? 'en' : 'pt';
 ---
 <!doctype html>
-<html lang="pt-BR">
+<html lang={t.htmlLang}>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content={description} />
-  <title>{title} · mateus siil</title>
+  <meta name="description" content={description ?? t.bio[0]} />
+  <title>{title}</title>
+  {canonical && <link rel="canonical" href={new URL(canonical, Astro.site)} />}
+  {alternate && <link rel="alternate" hreflang={copy[other].htmlLang} href={new URL(alternate, Astro.site)} />}
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400;1,8..60,600&family=IBM+Plex+Mono:wght@400;500&display=swap"
     rel="stylesheet"
   />
 </head>
 <body>
-  <div class="site">
-    <header class="site-header">
-      <a class="brand" href="/">
-        <span class="brand-name">mateus siil</span>
-        <span class="brand-tag">/blog</span>
-      </a>
-      <nav>
-        <a href="/">posts</a>
-      </nav>
-    </header>
-
-    <main>
-      <slot />
-    </main>
-
-    <footer class="site-footer">
-      <span>© {new Date().getFullYear()} mateus siil</span>
-      <a href="https://github.com/mateussiil" aria-label="GitHub">github</a>
-    </footer>
+  <div class="band">
+    <div class="wrap">
+      <header class="site-header">
+        <a class="brand" href={t.home}>mateus silva</a>
+        <nav aria-label="Principal">
+          <a href={`${t.home}#projetos`}>{t.nav.projects}</a>
+          <a href={`${t.home}#artigos`}>{t.nav.articles}</a>
+          <a href={`${t.home}#consumindo`}>{t.nav.reading}</a>
+          <span class="lang-switch">
+            <a href="/" aria-current={lang === 'pt' ? 'true' : undefined} hreflang="pt-BR" lang="pt-BR">PT</a>
+            <a href="/en/" aria-current={lang === 'en' ? 'true' : undefined} hreflang="en" lang="en">EN</a>
+          </span>
+        </nav>
+      </header>
+      <slot name="hero" />
+    </div>
   </div>
+
+  <main class="wrap">
+    <slot />
+  </main>
+
+  <footer class="band site-footer">
+    <div class="wrap footer-inner">
+      <span>Mateus Silva, {new Date().getFullYear()}</span>
+      <span class="footer-links">
+        <a href={LINKS.linkedin} rel="noreferrer">LinkedIn</a>
+        <a href={LINKS.github} rel="noreferrer">GitHub</a>
+        <a href={LINKS.medium} rel="noreferrer">Medium</a>
+      </span>
+    </div>
+  </footer>
 </body>
 </html>
 
 <style is:global>
   :root {
-    --bg: #fdfcfa;
-    --text: #1c1b19;
-    --text-muted: #6b6862;
-    --border: #e7e4de;
+    --band: #0e3b3a;
+    --band-text: #e6efec;
+    --band-muted: #a9c2bd;
+    --band-rule: rgba(255, 255, 255, 0.16);
+    --paper: #e9efec;
+    --surface: #f7faf9;
+    --text: #14201f;
+    --text-soft: #2b3836;
+    --text-muted: #52615e;
+    --rule: #c9d5d1;
+    --rule-soft: #d3ddd9;
     --accent: #0f766e;
+    --accent-hover: #0b5a54;
+    --signal: #e8b04b;
     --serif: 'Source Serif 4', Georgia, serif;
-    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     --mono: 'IBM Plex Mono', ui-monospace, monospace;
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #16181a;
-      --text: #e9e7e2;
-      --text-muted: #96938c;
-      --border: #2b2e31;
-      --accent: #2dd4bf;
+      --band: #0b2f2e;
+      --paper: #121b1a;
+      --surface: #182423;
+      --text: #e3ebe8;
+      --text-soft: #c5d3cf;
+      --text-muted: #93a6a2;
+      --rule: #2a3836;
+      --rule-soft: #2a3836;
+      --accent: #5fd0c0;
+      --accent-hover: #8fe3d7;
     }
   }
 
   * { box-sizing: border-box; }
 
+  [hidden] { display: none !important; }
+
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
   body {
     margin: 0;
-    background: var(--bg);
+    background: var(--paper);
     color: var(--text);
-    font-family: var(--sans);
+    font-family: var(--serif);
     -webkit-font-smoothing: antialiased;
   }
 
-  a { color: inherit; }
-
-  .site {
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 0 24px;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+  a { color: var(--accent); }
+  a:hover { color: var(--accent-hover); }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 3px;
+    border-radius: 2px;
   }
+
+  .wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 0 48px;
+  }
+
+  .band {
+    background: var(--band);
+    color: var(--band-text);
+  }
+
+  .band a { color: var(--band-muted); text-decoration: none; }
+  .band a:hover { color: #ffffff; }
 
   .site-header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
-    padding: 32px 0;
-    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 16px 24px;
+    padding: 28px 0;
   }
 
-  .brand {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    text-decoration: none;
-  }
-
-  .brand-name {
-    font-family: var(--serif);
-    font-weight: 700;
+  .band .brand {
+    color: #ffffff;
+    font-weight: 600;
     font-size: 19px;
   }
 
-  .brand-tag {
+  .site-header nav {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px 28px;
+    font-size: 16px;
+  }
+
+  .lang-switch {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--band-rule);
+    border-radius: 999px;
+  }
+
+  .band .lang-switch a {
     font-family: var(--mono);
-    font-size: 12px;
-    color: var(--accent);
+    font-size: 13px;
+    min-width: 40px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    text-align: center;
   }
 
-  .site-header nav a {
-    font-size: 14px;
-    text-decoration: none;
-    color: var(--text-muted);
+  .band .lang-switch a[aria-current] {
+    background: #ffffff;
+    color: var(--band);
   }
 
-  main { flex-grow: 1; padding: 40px 0 64px; }
+  .site-footer { margin-top: 0; }
 
-  .site-footer {
+  .footer-inner {
     display: flex;
     justify-content: space-between;
-    padding: 24px 0 40px;
-    border-top: 1px solid var(--border);
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--text-muted);
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding-top: 32px;
+    padding-bottom: 44px;
+    color: var(--band-muted);
   }
 
-  .site-footer a { text-decoration: none; }
+  .footer-links { display: flex; gap: 24px; }
+
+  .mono { font-family: var(--mono); }
+
+  @media (max-width: 760px) {
+    .wrap { padding: 0 20px; }
+    .site-header nav { gap: 10px 18px; font-size: 15px; }
+  }
 </style>

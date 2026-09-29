@@ -2,7 +2,8 @@
 title: "Como uso IA pra resolver probleminhas do dia a dia"
 date: 2026-09-22
 excerpt: "Uma coleção de automações pequenas que economizam minutos todo dia — e por que elas importam mais que um projeto grande."
-tags: ["ia", "produtividade"]
+themes: ["ia"]
+draft: true
 ---
 
 Não é o projeto grande que economiza tempo no fim do mês — é a automação de cinco minutos que você usa todo santo dia. Separei aqui três exemplos reais que uso na minha rotina.
