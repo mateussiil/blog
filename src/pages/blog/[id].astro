@@ -1,5 +1,6 @@
 ---
 import { getCollection, render } from 'astro:content';
+import { Image } from 'astro:assets';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
 export async function getStaticPaths() {
@@ -22,6 +23,16 @@ const { Content } = await render(post);
       {post.data.tags.map((tag) => <span class="tag">{tag}</span>)}
     </div>
     <h1>{post.data.title}</h1>
+    {post.data.cover && (
+      <Image
+        class="cover"
+        src={post.data.cover}
+        alt={post.data.coverAlt}
+        widths={[720, 1080, 1440]}
+        sizes="(max-width: 720px) 100vw, 672px"
+        loading="eager"
+      />
+    )}
     <div class="prose">
       <Content />
     </div>
@@ -59,6 +70,15 @@ const { Content } = await render(post);
     margin: 0 0 32px;
   }
 
+  .cover {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    margin: 0 0 32px;
+  }
+
   .prose {
     font-size: 17px;
     line-height: 1.7;
@@ -69,6 +89,26 @@ const { Content } = await render(post);
     font-weight: 600;
     font-size: 24px;
     margin: 40px 0 16px;
+  }
+
+  .prose :global(h3) {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 20px;
+    margin: 32px 0 12px;
+  }
+
+  .prose :global(ul) {
+    margin: 0 0 20px;
+    padding-left: 22px;
+  }
+
+  .prose :global(li) {
+    margin: 0 0 6px;
+  }
+
+  .prose :global(a) {
+    color: var(--accent);
   }
 
   .prose :global(p) {
