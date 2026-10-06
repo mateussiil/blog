@@ -36,7 +36,7 @@ const other: Lang = lang === 'pt' ? 'en' : 'pt';
         <a class="brand" href={t.home}>mateus silva</a>
         <nav aria-label="Principal">
           <a href={`${t.home}#projetos`}>{t.nav.projects}</a>
-          <a href={`${t.home}#artigos`}>{t.nav.articles}</a>
+          <a href={t.articlesPath}>{t.nav.articles}</a>
           <a href={`${t.home}#consumindo`}>{t.nav.reading}</a>
           <span class="lang-switch">
             <a href="/" aria-current={lang === 'pt' ? 'true' : undefined} hreflang="pt-BR" lang="pt-BR">PT</a>

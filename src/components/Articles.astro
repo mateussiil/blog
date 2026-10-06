@@ -1,0 +1,124 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostRows from './PostRows.astro';
+import { copy, THEME_IDS, type Lang } from '../i18n';
+
+interface Props {
+  lang: Lang;
+}
+const { lang } = Astro.props;
+const t = copy[lang];
+const other = copy[lang === 'pt' ? 'en' : 'pt'];
+
+const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+---
+<BaseLayout
+  title={`${t.articles.title} — Mateus Silva`}
+  description={t.articles.pageSub}
+  lang={lang}
+  alternate={other.articlesPath}
+  canonical={t.articlesPath}
+>
+  <section id="artigos" class="section">
+    <header class="page-head">
+      <h1>{t.articles.title}</h1>
+      <p class="section-sub">{t.articles.pageSub}</p>
+    </header>
+
+    <div class="filters" role="group" aria-label={t.articles.topic}>
+      <button type="button" class="chip" data-theme="" aria-pressed="true">{t.articles.allThemes}</button>
+      {THEME_IDS.map((id) => (
+        <button type="button" class="chip" data-theme={id} aria-pressed="false">{t.themes[id]}</button>
+      ))}
+    </div>
+
+    <PostRows posts={posts} lang={lang} />
+    <p class="empty" hidden>{t.articles.empty}</p>
+  </section>
+</BaseLayout>
+
+<script>
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>('.filters [data-theme]')];
+  const items = [...document.querySelectorAll<HTMLElement>('#artigos li[data-themes]')];
+  const groups = [...document.querySelectorAll<HTMLElement>('[data-year-group]')];
+  const empty = document.querySelector<HTMLElement>('#artigos .empty')!;
+
+  function apply(theme: string) {
+    for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.theme === theme));
+    for (const el of items) {
+      el.hidden = theme !== '' && !(el.dataset.themes ?? '').split(' ').includes(theme);
+    }
+    for (const g of groups) {
+      g.hidden = [...g.querySelectorAll<HTMLElement>('[data-themes]')].every((li) => li.hidden);
+    }
+    empty.hidden = items.some((el) => !el.hidden);
+
+    const url = new URL(location.href);
+    if (theme) url.searchParams.set('tema', theme);
+    else url.searchParams.delete('tema');
+    history.replaceState(null, '', url);
+  }
+
+  for (const b of buttons) b.addEventListener('click', () => apply(b.dataset.theme ?? ''));
+
+  // A home linka os temas como /artigos/?tema=<id>.
+  const initial = new URLSearchParams(location.search).get('tema') ?? '';
+  if (buttons.some((b) => b.dataset.theme === initial)) apply(initial);
+</script>
+
+<style>
+  .section {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    padding: 72px 0 96px;
+  }
+
+  .page-head { display: flex; flex-direction: column; gap: 12px; }
+
+  h1 {
+    margin: 0;
+    font-size: 48px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+
+  .section-sub {
+    margin: 0;
+    font-size: 18px;
+    font-style: italic;
+    color: var(--text-muted);
+  }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; }
+
+  .chip {
+    min-height: 40px;
+    padding: 0 16px;
+    border: 1px solid var(--rule-soft);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-soft);
+    font: inherit;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  .chip[aria-pressed='true'] {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--paper);
+  }
+
+  .empty { margin: 0; font-size: 18px; font-style: italic; color: var(--text-muted); }
+
+  @media (max-width: 760px) {
+    .section { padding: 48px 0 64px; }
+    h1 { font-size: 36px; }
+  }
+</style>

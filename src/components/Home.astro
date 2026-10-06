@@ -1,6 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import PostRows from './PostRows.astro';
 import { copy, LINKS, NOW_UPDATED, THEME_IDS, type Lang } from '../i18n';
 
 interface Props {
@@ -14,12 +15,9 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
   (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
 );
 const featured = posts.find((p) => p.data.featured);
-const years = new Map<number, typeof posts>();
-for (const post of posts) {
-  if (post === featured) continue;
-  const year = post.data.date.getUTCFullYear();
-  years.set(year, [...(years.get(year) ?? []), post]);
-}
+// A home mostra só os mais recentes; a lista completa fica em /artigos/.
+const HOME_POSTS = 5;
+const recent = posts.filter((p) => p !== featured).slice(0, HOME_POSTS);
 
 const projetos = (await getCollection('projetos')).sort((a, b) => a.data.order - b.data.order);
 const destaque = projetos.find((p) => p.data.featured);
@@ -43,7 +41,7 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
       <p class="themes">
         {t.themesLead}{' '}
         {THEME_IDS.map((id, i) => (
-          <><span class="nowrap"><button type="button" class="theme" data-theme={id} aria-pressed="false">{t.themes[id]}</button>{themeSep(i)}</span>{' '}</>
+          <><span class="nowrap"><a class="theme" href={`${t.articlesPath}?tema=${id}`}>{t.themes[id]}</a>{themeSep(i)}</span>{' '}</>
         ))}
       </p>
       <div class="cta">
@@ -128,14 +126,12 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
 
   <section id="artigos" class="section">
     <div class="section-head">
-      <h2>{t.articles.title}</h2>
-      <button type="button" class="clear-filter" hidden aria-label={t.articles.clear}>
-        {t.articles.topic} <span data-filter-label></span> ×
-      </button>
+      <h2><a href={t.articlesPath}>{t.articles.title}</a></h2>
+      <a class="all-link" href={t.articlesPath}>{t.articles.all} ({posts.length}) →</a>
     </div>
 
     {featured && (
-      <a class="featured-post" href={`/blog/${featured.id}/`} data-themes={featured.data.themes.join(' ')} lang={featured.data.lang === 'en' ? 'en' : 'pt-BR'}>
+      <a class="featured-post" href={`/blog/${featured.id}/`} lang={featured.data.lang === 'en' ? 'en' : 'pt-BR'}>
         <div class="fpost-meta">
           <span class="pinned">{t.articles.pinned}</span>
           <time class="mono" datetime={featured.data.date.toISOString()}>{t.date(featured.data.date, 'long')}</time>
@@ -148,25 +144,10 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
       </a>
     )}
 
-    <div class="years">
-      {[...years].map(([year, list]) => (
-        <div class="year" data-year-group>
-          <span class="mono year-label">{year}</span>
-          <ul>
-            {list.map((post) => (
-              <li data-themes={post.data.themes.join(' ')}>
-                <a href={`/blog/${post.id}/`} class="row" lang={post.data.lang === 'en' ? 'en' : 'pt-BR'}>
-                  <time class="mono" datetime={post.data.date.toISOString()}>{t.date(post.data.date)}</time>
-                  <span class="row-title">{post.data.title}</span>
-                  <span class="mono badge">{badge(post.data.lang)}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
-    <p class="empty" hidden>{t.articles.empty}</p>
+    <PostRows posts={recent} lang={lang} />
+    {posts.length > recent.length + (featured ? 1 : 0) && (
+      <a class="all-link all-bottom" href={t.articlesPath}>{t.articles.all} →</a>
+    )}
   </section>
 
   <section id="consumindo" class="section section-last">
@@ -192,38 +173,6 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     </ul>
   </section>
 </BaseLayout>
-
-<script>
-  const buttons = [...document.querySelectorAll<HTMLButtonElement>('button[data-theme]')];
-  const items = [...document.querySelectorAll<HTMLElement>('#artigos [data-themes]')];
-  const groups = [...document.querySelectorAll<HTMLElement>('[data-year-group]')];
-  const clear = document.querySelector<HTMLButtonElement>('.clear-filter')!;
-  const label = document.querySelector<HTMLElement>('[data-filter-label]')!;
-  const empty = document.querySelector<HTMLElement>('#artigos .empty')!;
-
-  function apply(theme: string | null) {
-    for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.theme === theme));
-    for (const el of items) {
-      el.hidden = theme !== null && !(el.dataset.themes ?? '').split(' ').includes(theme);
-    }
-    for (const g of groups) {
-      g.hidden = [...g.querySelectorAll<HTMLElement>('[data-themes]')].every((li) => li.hidden);
-    }
-    const active = buttons.find((b) => b.dataset.theme === theme);
-    clear.hidden = !active;
-    label.textContent = active?.textContent ?? '';
-    empty.hidden = items.some((el) => !el.hidden);
-  }
-
-  for (const b of buttons) {
-    b.addEventListener('click', () => {
-      const next = b.getAttribute('aria-pressed') === 'true' ? null : b.dataset.theme!;
-      apply(next);
-      if (next) document.getElementById('artigos')?.scrollIntoView({ block: 'start' });
-    });
-  }
-  clear.addEventListener('click', () => apply(null));
-</script>
 
 <style>
   .hero {
@@ -471,19 +420,17 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
   .projects .project-themes { font-size: 15px; font-style: italic; color: var(--text-muted); }
 
   /* Artigos */
-  .clear-filter {
-    min-height: 44px;
-    padding: 0 16px;
-    border: 1px solid var(--accent);
-    border-radius: 999px;
-    background: var(--surface);
+  .section-head h2 a { color: inherit; text-decoration: none; }
+  .section-head h2 a:hover { color: var(--accent); }
+
+  .all-link {
+    font-size: 17px;
     color: var(--accent);
-    font: inherit;
-    font-size: 16px;
-    cursor: pointer;
+    text-decoration: none;
   }
 
-
+  .all-link:hover { text-decoration: underline; }
+  .all-bottom { align-self: flex-start; }
 
   .featured-post {
     display: grid;
@@ -509,32 +456,7 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
   }
 
   .fpost-excerpt { font-size: 19px; line-height: 1.6; color: var(--text-soft); max-width: 36em; }
-  .featured-post:hover .fpost-title, .row:hover .row-title { color: var(--accent); }
-
-  .year {
-    display: grid;
-    grid-template-columns: 180px minmax(0, 1fr);
-    gap: 40px;
-    border-top: 1px solid var(--rule);
-  }
-
-  .year-label { padding-top: 20px; font-size: 15px; font-weight: 500; color: var(--text-muted); }
-  .year ul { list-style: none; margin: 0; padding: 0; }
-
-  .row {
-    display: grid;
-    grid-template-columns: 84px minmax(0, 1fr) auto;
-    gap: 16px;
-    align-items: baseline;
-    padding: 18px 0;
-    color: var(--text);
-    text-decoration: none;
-  }
-
-  .row time, .badge { font-size: 13px; color: var(--text-muted); }
-  .row-title { font-size: 21px; line-height: 1.4; }
-
-  .empty { margin: 0; font-size: 18px; font-style: italic; color: var(--text-muted); }
+  .featured-post:hover .fpost-title { color: var(--accent); }
 
   /* Consumindo */
   .reading { list-style: none; margin: 0; padding: 0; }
@@ -559,7 +481,7 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     .hero { gap: 22px; padding: 48px 0 48px; }
     h1 { font-size: 52px; }
     .bio, .themes { font-size: 20px; }
-    .now, .featured-post, .year, .reading li { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .now, .featured-post, .reading li { grid-template-columns: minmax(0, 1fr); gap: 12px; }
     .section { padding: 48px 0; }
     .section:first-child { padding-top: 56px; }
     .section-head h2 { font-size: 32px; }
@@ -569,8 +491,6 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     .projects { grid-template-columns: minmax(0, 1fr); }
     .fpost-meta { flex-direction: row; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
     .fpost-title { font-size: 28px; }
-    .year-label { padding-top: 16px; }
-    .row { grid-template-columns: 64px minmax(0, 1fr) auto; }
-    .row-title, .reading-title { font-size: 19px; }
+    .reading-title { font-size: 19px; }
   }
 </style>
