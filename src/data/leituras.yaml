@@ -1,0 +1,20 @@
+# Livros, artigos e itens do Recorder que aparecem na seção "Consumindo".
+# status: lendo | lido — o que estiver "lendo" também aparece no bloco "Agora".
+# titleEn: título da edição original, usado na versão em inglês (opcional).
+# note / noteEn: sua linha sobre o que ficou (opcional).
+
+- id: engenheiro-mentalidade-produto
+  kind: livro
+  title: "O Engenheiro de Software com Mentalidade de Produto"
+  titleEn: "The Product-Minded Engineer"
+  author: "Drew Hoskins"
+  url: "https://www.amazon.com.br/dp/8575229982"
+  status: lendo
+
+- id: gestao-alta-performance
+  kind: livro
+  title: "Gestão de alta performance"
+  titleEn: "High Output Management"
+  author: "Andrew S. Grove"
+  url: "https://www.amazon.com.br/dp/855717358X"
+  status: lendo

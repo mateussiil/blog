@@ -1,0 +1,56 @@
+# Projetos da home. O item com `featured: true` aparece em destaque,
+# com as `sources` desenhadas como um fluxo que alimenta o `hub`.
+# `order` define a ordem de exibição.
+
+- id: best-place
+  order: 1
+  name: "Best Place"
+  featured: true
+  themes: [arquitetura, dados, ia]
+  desc: "Um ecossistema de serviços que cruza notícias locais, comodidades urbanas e imóveis para avaliar bairros de São Luís."
+  descEn: "A service ecosystem that combines local news, urban amenities and real-estate listings to rate neighbourhoods in São Luís."
+  sources:
+    - repo: news-scrapping
+      desc: "Lê 7 jornais locais, classifica violência e risco climático com IA e localiza cada evento no bairro."
+      descEn: "Reads 7 local newspapers, classifies violence and climate risk with AI and places each event in a neighbourhood."
+    - repo: urban-data-collector
+      desc: "Mapeia escolas, hospitais, parques e mercados de cada bairro via Google Places."
+      descEn: "Maps schools, hospitals, parks and shops in each neighbourhood via Google Places."
+    - repo: urban-property-crawler
+      desc: "Coleta anúncios de imóveis com crawler distribuído e processamento assíncrono."
+      descEn: "Collects property listings with a distributed crawler and async processing."
+  hub:
+    title: "Score por bairro"
+    titleEn: "Neighbourhood score"
+    repos: [best-place-node, best-place]
+    desc: "API em Node/Prisma e front-end em React que juntam as três fontes."
+    descEn: "Node/Prisma API and React front end that bring the three sources together."
+
+- id: recorder
+  order: 2
+  name: "Recorder"
+  url: "https://recorder.mateussiil.com.br/"
+  themes: [ia, produto]
+  desc: "Meu segundo cérebro: guarda vídeos, áudios, textos e links, transcreve tudo e deixa buscável pelo conteúdo."
+  descEn: "My second brain: keeps videos, audio, text and links, transcribes them and makes everything searchable by content."
+
+- id: leitura-curada
+  order: 3
+  name: "Leitura Curada"
+  themes: [ia, produto]
+  desc: "Curadoria de leitura por IA entregue em EPUB ou PDF, por e-mail ou no Kindle. Por convite."
+  descEn: "AI-curated reading delivered as EPUB or PDF, by e-mail or to Kindle. Invite only."
+
+- id: braglog
+  order: 4
+  name: "Braglog"
+  themes: [ia, devex]
+  desc: "Lê meu histórico do GitHub e escreve rascunhos de post para o LinkedIn. Nada é publicado sem eu aprovar."
+  descEn: "Reads my GitHub history and drafts LinkedIn posts. Nothing goes out without my approval."
+
+- id: fucador
+  order: 5
+  name: "Fuçador"
+  themes: [ia, devex]
+  desc: "Revisa meus projetos toda semana e propõe melhorias num backlog versionado."
+  descEn: "Reviews my projects every week and proposes improvements into a versioned backlog."

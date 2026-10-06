@@ -2,10 +2,10 @@
 title: "Arquitetura de frontend: organizando o CAOS"
 date: 2026-10-05
 excerpt: "E se tratássemos o frontend como tratamos o backend? Uma proposta de arquitetura modular por domínio, usando um e-commerce como exemplo."
-tags: ["frontend", "arquitetura"]
-cover: ./images/arquitetura-frontend-ecommerce.png
-coverAlt: "Frontend como software — arquitetura modular por domínio em um e-commerce, com as camadas domain, application, infrastructure e ui."
+themes: ["arquitetura"]
 ---
+
+![Ilustração “Frontend como software”: arquitetura modular por domínio em um e-commerce, com uma página de produto ligada às camadas domain (entidades e regras), application (casos de uso), infrastructure (repositórios e integrações) e ui (componentes e páginas).](/images/artigos/arquitetura-de-frontend-organizando-o-caos.png)
 
 O primeiro ponto de partida de todo desenvolvedor costuma ser o frontend.
 
