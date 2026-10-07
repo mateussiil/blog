@@ -238,13 +238,30 @@ const t = copy[lang].comments;
       const found = el?.closest('p, h2, h3, h4, li');
       return found ? blocks.indexOf(found as HTMLElement) : -1;
     }
+    // A parte da seleção que cai dentro de um bloco.
+    function clip(r: Range, block: HTMLElement) {
+      const x = document.createRange();
+      x.selectNodeContents(block);
+      if (r.compareBoundaryPoints(Range.START_TO_START, x) > 0) x.setStart(r.startContainer, r.startOffset);
+      if (r.compareBoundaryPoints(Range.END_TO_END, x) < 0) x.setEnd(r.endContainer, r.endOffset);
+      return x;
+    }
     function readSelection(): Candidate | { error: string } | null {
       const sel = getSelection();
       if (!sel || !sel.rangeCount || sel.isCollapsed) return null;
-      const r = sel.getRangeAt(0);
-      const a = blockOf(r.startContainer), b = blockOf(r.endContainer);
+      let r = sel.getRangeAt(0);
+      let a = blockOf(r.startContainer);
+      const b = blockOf(r.endContainer);
       if (a < 0 && b < 0) return null;
-      if (a !== b) return { error: t.oneBlock };
+      if (a !== b) {
+        // Três cliques selecionam o parágrafo, mas a seleção termina encostada no bloco seguinte.
+        // Se o que sobra fora de um dos blocos é só espaço, fica com esse bloco.
+        const whole = r.toString().trim();
+        const fit = [a, b].find((i) => i >= 0 && clip(r, blocks[i]).toString().trim() === whole);
+        if (fit === undefined) return { error: t.oneBlock };
+        r = clip(r, blocks[fit]);
+        a = fit;
+      }
       const text = blocks[a].textContent ?? '';
       let start = offsetOf(blocks[a], r.startContainer, r.startOffset);
       let end = offsetOf(blocks[a], r.endContainer, r.endOffset);
