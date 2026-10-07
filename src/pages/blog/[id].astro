@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import Comments from '../../components/Comments.astro';
 import { copy } from '../../i18n';
 
 export async function getStaticPaths() {
@@ -25,15 +26,19 @@ const originName = originHost?.includes('medium.com') ? 'Medium' : originHost;
 >
   <article>
     <header class="post-header">
-      <time class="mono" datetime={post.data.date.toISOString()}>{t.date(post.data.date, 'long')}</time>
+      <div class="post-meta">
+        <time class="mono" datetime={post.data.date.toISOString()}>{t.date(post.data.date, 'long')}</time>
+        <button type="button" class="comments-toggle mono" data-comments-toggle aria-pressed="true" hidden></button>
+      </div>
       <h1>{post.data.title}</h1>
       {post.data.themes.length > 0 && (
         <p class="post-themes">{post.data.themes.map((id) => t.themes[id]).join(', ')}</p>
       )}
     </header>
-    <div class="prose">
+    <div class="prose" data-comments-text>
       <Content />
     </div>
+    <Comments postId={post.id} lang={post.data.lang} />
     <footer class="post-footer">
       {post.data.originalUrl && (
         <p>{t.post.original} <a href={post.data.originalUrl} rel="noreferrer">{originName}</a>.</p>
@@ -50,7 +55,15 @@ const originName = originHost?.includes('medium.com') ? 'Medium' : originHost;
   }
 
   .post-header { display: flex; flex-direction: column; gap: 14px; margin-bottom: 40px; }
+  .post-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
   .post-header time { font-size: 13px; color: var(--text-muted); }
+
+  .comments-toggle {
+    padding: 0; border: 0; background: none; cursor: pointer;
+    font-size: 13px; color: var(--accent);
+    text-decoration: underline dashed var(--cm-line); text-underline-offset: 4px;
+  }
+  .comments-toggle:hover { text-decoration-color: var(--accent); }
 
   h1 {
     margin: 0;

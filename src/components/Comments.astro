@@ -1,0 +1,667 @@
+---
+// Comentários no meio do texto, estilo Kindle: selecionar um trecho (ou clicar numa palavra),
+// comentar, e o trecho fica tracejado para todos. Funciona com mouse e com toque.
+import { copy, type Lang } from '../i18n';
+
+interface Props {
+  postId: string;
+  lang: Lang;
+}
+const { postId, lang } = Astro.props;
+const t = copy[lang].comments;
+---
+<div class="cm" data-comments data-post={postId} data-lang={lang}>
+  <section class="cm-orphans" data-orphans hidden>
+    <h2>{t.orphansTitle}</h2>
+    <p>{t.orphansSub}</p>
+    <ul data-orphan-list></ul>
+  </section>
+
+  <div class="cm-toolbar" data-toolbar hidden>
+    <button type="button" data-toolbar-comment>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+      {t.comment}
+    </button>
+  </div>
+
+  <div class="cm-actionbar" data-actionbar hidden>
+    <span class="cm-actionbar-quote" data-actionbar-quote></span>
+    <button type="button" data-actionbar-comment>{t.comment}</button>
+  </div>
+
+  <div class="cm-shade" data-shade hidden></div>
+  <div class="cm-panel" data-panel role="dialog" aria-labelledby="cm-panel-title" hidden>
+    <div class="cm-grip" data-grip aria-hidden="true"></div>
+    <div class="cm-panel-head">
+      <span id="cm-panel-title" data-panel-title></span>
+      <button type="button" class="cm-close" data-close aria-label={t.close}>×</button>
+    </div>
+    <blockquote class="cm-quote" data-quote></blockquote>
+    <ul class="cm-list" data-list></ul>
+    <form class="cm-form" data-form novalidate>
+      <div class="cm-field">
+        <label for="cm-body" data-body-label>{t.commentLabel}</label>
+        <textarea id="cm-body" maxlength="2000" required></textarea>
+      </div>
+      <div class="cm-pair">
+        <div class="cm-field">
+          <label for="cm-name">{t.name} <span class="cm-opt">{t.optional}</span></label>
+          <input type="text" id="cm-name" autocomplete="name" maxlength="60" placeholder={t.namePlaceholder} />
+        </div>
+        <div class="cm-field">
+          <label for="cm-email">{t.email} <span class="cm-opt">{t.optional}</span></label>
+          <input type="email" id="cm-email" autocomplete="email" inputmode="email" maxlength="200" placeholder="voce@email.com" />
+        </div>
+      </div>
+      <!-- Só robôs preenchem este campo. -->
+      <div class="cm-hp" aria-hidden="true">
+        <label for="cm-website">Website</label>
+        <input type="text" id="cm-website" tabindex="-1" autocomplete="off" />
+      </div>
+      <div class="cm-form-row">
+        <span class="cm-hint" data-hint role="status"></span>
+        <button type="submit" class="cm-submit" data-submit disabled>{t.publish}</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="cm-toast" data-toast role="status" hidden></div>
+</div>
+
+<script>
+  import { copy, type Lang } from '../i18n';
+
+  type Comment = { id: string; name: string | null; body: string; createdAt: string };
+  type Thread = { id: string; quote: string; prefix: string; suffix: string; comments: Comment[] };
+  type Loc = { block: number; start: number; end: number };
+  type Candidate = Loc & { quote: string; rect: DOMRect };
+
+  const root = document.querySelector<HTMLElement>('[data-comments]');
+  const article = document.querySelector<HTMLElement>('[data-comments-text]');
+  if (root && article) init(root, article);
+
+  function init(root: HTMLElement, article: HTMLElement) {
+    const t = copy[root.dataset.lang as Lang].comments;
+    const postId = root.dataset.post!;
+    const q = <T extends Element = HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
+    const toolbar = q('[data-toolbar]');
+    const actionbar = q('[data-actionbar]');
+    const panel = q('[data-panel]');
+    const shade = q('[data-shade]');
+    const toastEl = q('[data-toast]');
+    const form = q<HTMLFormElement>('[data-form]');
+    const bodyInput = q<HTMLTextAreaElement>('#cm-body');
+    const nameInput = q<HTMLInputElement>('#cm-name');
+    const emailInput = q<HTMLInputElement>('#cm-email');
+    const honeypot = q<HTMLInputElement>('#cm-website');
+    const submit = q<HTMLButtonElement>('[data-submit]');
+    const hint = q('[data-hint]');
+    const toggle = document.querySelector<HTMLButtonElement>('[data-comments-toggle]');
+
+    const CONTEXT = 32;
+    const store = {
+      get(k: string) { try { return localStorage.getItem(k); } catch { return null; } },
+      set(k: string, v: string) { try { localStorage.setItem(k, v); } catch { /* sem armazenamento */ } },
+    };
+
+    // Blocos de texto comentáveis: parágrafos, títulos e itens de lista (o mais interno, fora de blocos de código).
+    const blocks = [...article.querySelectorAll<HTMLElement>('p, h2, h3, h4, li')].filter(
+      (el, _, all) => !el.closest('pre') && !all.some((other) => other !== el && el.contains(other))
+    );
+    const original = blocks.map((b) => b.innerHTML);
+
+    let threads: Thread[] = [];
+    let locs = new Map<string, Loc>();
+    let pending: (Loc & { quote: string; prefix: string; suffix: string }) | null = null;
+    let openId: string | null = null;
+    let candidate: Candidate | null = null;
+    let marksOn = store.get('comments:marks') !== 'off';
+    let sending = false;
+
+    const isSheet = () => matchMedia('(max-width: 760px)').matches;
+    const coarse = () => matchMedia('(pointer: coarse)').matches;
+
+    // ---------- Âncora: o texto do trecho + algumas letras antes e depois ----------
+    function textNodes(el: Node) {
+      const out: Text[] = [];
+      const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      while (w.nextNode()) out.push(w.currentNode as Text);
+      return out;
+    }
+    function offsetOf(block: HTMLElement, node: Node, offset: number) {
+      const r = document.createRange();
+      r.setStart(block, 0);
+      r.setEnd(node, offset);
+      return r.toString().length;
+    }
+    function anchorOf(text: string, start: number, end: number) {
+      return { quote: text.slice(start, end), prefix: text.slice(Math.max(0, start - CONTEXT), start), suffix: text.slice(end, end + CONTEXT) };
+    }
+    const commonEnd = (a: string, b: string) => { let n = 0; while (n < a.length && n < b.length && a[a.length - 1 - n] === b[b.length - 1 - n]) n++; return n; };
+    const commonStart = (a: string, b: string) => { let n = 0; while (n < a.length && n < b.length && a[n] === b[n]) n++; return n; };
+    function locate(th: Thread): Loc | null {
+      let best: (Loc & { score: number }) | null = null;
+      blocks.forEach((b, block) => {
+        const text = b.textContent ?? '';
+        for (let i = text.indexOf(th.quote); i >= 0; i = text.indexOf(th.quote, i + 1)) {
+          const end = i + th.quote.length;
+          const score = commonEnd(th.prefix, text.slice(Math.max(0, i - CONTEXT), i)) + commonStart(th.suffix, text.slice(end, end + CONTEXT));
+          if (!best || score > best.score) best = { block, start: i, end, score };
+        }
+      });
+      return best;
+    }
+    function wrap(block: HTMLElement, start: number, end: number, attrs: Record<string, string>) {
+      let pos = 0;
+      const spans: HTMLSpanElement[] = [];
+      for (const node of textNodes(block)) {
+        const a = pos, b = pos + node.length;
+        pos = b;
+        if (b <= start || a >= end) continue;
+        let target = node;
+        const s = Math.max(start, a) - a, e = Math.min(end, b) - a;
+        if (e < target.length) target.splitText(e);
+        if (s > 0) target = target.splitText(s);
+        const span = document.createElement('span');
+        for (const [k, v] of Object.entries(attrs)) span.setAttribute(k, v);
+        target.parentNode!.insertBefore(span, target);
+        span.appendChild(target);
+        spans.push(span);
+      }
+      return spans;
+    }
+
+    // ---------- Desenho ----------
+    function render() {
+      blocks.forEach((b, i) => { b.innerHTML = original[i]; });
+      locs = new Map();
+      for (const th of threads) { const l = locate(th); if (l) locs.set(th.id, l); }
+      const placed = threads.filter((th) => locs.has(th.id)).sort((a, b) => {
+        const la = locs.get(a.id)!, lb = locs.get(b.id)!;
+        return la.block - lb.block || la.start - lb.start;
+      });
+      const taken: Loc[] = [];
+      for (const th of placed) {
+        const l = locs.get(th.id)!;
+        // Uma conversa por trecho: se dois trechos se cruzarem, o mais antigo fica com o tracejado.
+        if (taken.some((x) => x.block === l.block && l.start < x.end && x.start < l.end)) continue;
+        taken.push(l);
+        const spans = wrap(blocks[l.block], l.start, l.end, { class: 'cm-mark', 'data-id': th.id });
+        spans.forEach((s, i) => {
+          if (i === 0) {
+            s.tabIndex = 0;
+            s.setAttribute('role', 'button');
+            s.setAttribute('aria-label', `${t.total(th.comments.length)}: ${th.quote}`);
+          }
+          if (th.id === openId) s.classList.add('is-active');
+        });
+        const last = spans[spans.length - 1];
+        if (last) { last.classList.add('cm-mark-end'); last.dataset.count = String(th.comments.length); }
+      }
+      if (pending) wrap(blocks[pending.block], pending.start, pending.end, { class: 'cm-mark cm-pending' });
+      article.classList.toggle('cm-marks-off', !marksOn);
+      renderOrphans();
+      if (toggle) {
+        toggle.hidden = threads.length === 0;
+        toggle.textContent = `${t.count(threads.length)} · ${marksOn ? t.hide : t.show}`;
+        toggle.setAttribute('aria-pressed', String(marksOn));
+      }
+    }
+
+    function renderOrphans() {
+      const orphans = threads.filter((th) => !locs.has(th.id));
+      q('[data-orphans]').hidden = orphans.length === 0;
+      const list = q('[data-orphan-list]');
+      list.replaceChildren(...orphans.map((th) => {
+        const li = document.createElement('li');
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'cm-orphan' + (th.id === openId ? ' is-active' : '');
+        b.dataset.orphan = th.id;
+        const quote = document.createElement('span');
+        quote.className = 'cm-orphan-quote';
+        quote.textContent = `“${th.quote}”`;
+        const n = document.createElement('span');
+        n.className = 'cm-orphan-count';
+        n.textContent = t.total(th.comments.length);
+        b.append(quote, n);
+        b.addEventListener('click', () => openThread(th.id));
+        li.append(b);
+        return li;
+      }));
+    }
+
+    // ---------- Seleção ----------
+    const isWordChar = (ch: string | undefined) => /[\p{L}\p{N}_-]/u.test(ch ?? '');
+    function blockOf(node: Node | null) {
+      const el = node instanceof Element ? node : node?.parentElement;
+      const found = el?.closest('p, h2, h3, h4, li');
+      return found ? blocks.indexOf(found as HTMLElement) : -1;
+    }
+    function readSelection(): Candidate | { error: string } | null {
+      const sel = getSelection();
+      if (!sel || !sel.rangeCount || sel.isCollapsed) return null;
+      const r = sel.getRangeAt(0);
+      const a = blockOf(r.startContainer), b = blockOf(r.endContainer);
+      if (a < 0 && b < 0) return null;
+      if (a !== b) return { error: t.oneBlock };
+      const text = blocks[a].textContent ?? '';
+      let start = offsetOf(blocks[a], r.startContainer, r.startOffset);
+      let end = offsetOf(blocks[a], r.endContainer, r.endOffset);
+      while (start < end && /\s/.test(text[start])) start++;
+      while (end > start && /\s/.test(text[end - 1])) end--;
+      // Como no Kindle: a seleção sempre cobre palavras inteiras.
+      while (start > 0 && isWordChar(text[start - 1]) && isWordChar(text[start])) start--;
+      while (end < text.length && isWordChar(text[end]) && isWordChar(text[end - 1])) end++;
+      if (end <= start || end - start > 500) return null;
+      return { block: a, start, end, quote: text.slice(start, end), rect: r.getBoundingClientRect() };
+    }
+    function overlapping(c: Loc) {
+      return threads.find((th) => {
+        const l = locs.get(th.id);
+        return l && l.block === c.block && c.start < l.end && l.start < c.end;
+      });
+    }
+    function wordAt(x: number, y: number) {
+      let node: Node | null = null, offset = 0;
+      const d = document as Document & { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null };
+      if (d.caretPositionFromPoint) { const c = d.caretPositionFromPoint(x, y); if (c) { node = c.offsetNode; offset = c.offset; } }
+      else if (document.caretRangeFromPoint) { const c = document.caretRangeFromPoint(x, y); if (c) { node = c.startContainer; offset = c.startOffset; } }
+      if (!node || node.nodeType !== Node.TEXT_NODE) return null;
+      const s = (node as Text).data;
+      let a = offset, b = offset;
+      while (a > 0 && isWordChar(s[a - 1])) a--;
+      while (b < s.length && isWordChar(s[b])) b++;
+      if (a === b) return null;
+      const r = document.createRange();
+      r.setStart(node, a);
+      r.setEnd(node, b);
+      return r;
+    }
+
+    function showToolbar(c: Candidate) {
+      candidate = c;
+      toolbar.hidden = false;
+      const w = toolbar.offsetWidth, h = toolbar.offsetHeight;
+      const cx = c.rect.left + c.rect.width / 2;
+      const left = Math.max(16, Math.min(cx - w / 2, innerWidth - w - 16));
+      const above = c.rect.top - h - 12 >= 8;
+      toolbar.style.left = `${left + scrollX}px`;
+      toolbar.style.top = `${(above ? c.rect.top - h - 12 : c.rect.bottom + 12) + scrollY}px`;
+      toolbar.classList.toggle('is-below', !above);
+      toolbar.style.setProperty('--arrow', `${Math.max(14, Math.min(cx - left, w - 14))}px`);
+    }
+    function showActionbar(c: Candidate) {
+      candidate = c;
+      q('[data-actionbar-quote]').textContent = `“${c.quote}”`;
+      actionbar.hidden = false;
+    }
+    function hideTools() { toolbar.hidden = true; actionbar.hidden = true; }
+
+    function handleSelection(fromTouch: boolean) {
+      const c = readSelection();
+      if (!c) { hideTools(); return false; }
+      if ('error' in c) { toast(c.error); hideTools(); return true; }
+      const hit = marksOn && overlapping(c);
+      if (hit) { getSelection()?.removeAllRanges(); openThread(hit.id); return true; }
+      if (fromTouch || coarse()) showActionbar(c); else showToolbar(c);
+      return true;
+    }
+
+    article.addEventListener('mouseup', (e) => {
+      if (coarse() || e.button !== 0) return;
+      setTimeout(() => {
+        if (handleSelection(false)) return;
+        const target = e.target as Element;
+        if (target.closest('a, button, input, textarea, img, video')) return;
+        const mark = marksOn && target.closest<HTMLElement>('.cm-mark:not(.cm-pending)');
+        if (mark) { openThread(mark.dataset.id!); return; }
+        // Clique simples numa palavra: seleciona a palavra, como no Kindle.
+        const r = wordAt(e.clientX, e.clientY);
+        if (!r || blockOf(r.startContainer) < 0) return;
+        const sel = getSelection()!;
+        sel.removeAllRanges();
+        sel.addRange(r);
+        handleSelection(false);
+      }, 0);
+    });
+
+    // No toque, o leitor segura o dedo (seleção do sistema) e a barra inferior aparece sem brigar com o menu nativo.
+    let selTimer: ReturnType<typeof setTimeout>;
+    document.addEventListener('selectionchange', () => {
+      if (!coarse() || !panel.hidden) return;
+      clearTimeout(selTimer);
+      selTimer = setTimeout(() => handleSelection(true), 250);
+    });
+    article.addEventListener('click', (e) => {
+      if (!coarse()) return;
+      const mark = marksOn && (e.target as Element).closest<HTMLElement>('.cm-mark:not(.cm-pending)');
+      if (mark && getSelection()?.isCollapsed) openThread(mark.dataset.id!);
+    });
+    article.addEventListener('keydown', (e) => {
+      const mark = (e.target as Element).closest?.<HTMLElement>('.cm-mark:not(.cm-pending)');
+      if (mark && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openThread(mark.dataset.id!); }
+    });
+    // Destaca todos os pedaços de um trecho juntos (um trecho pode atravessar um <code>, por exemplo).
+    const hover = (e: Event, on: boolean) => {
+      const mark = (e.target as Element).closest?.<HTMLElement>('.cm-mark:not(.cm-pending)');
+      if (!mark || (on && !marksOn)) return;
+      for (const el of article.querySelectorAll(`.cm-mark[data-id="${mark.dataset.id}"]`)) el.classList.toggle('is-hover', on);
+    };
+    article.addEventListener('mouseover', (e) => hover(e, true));
+    article.addEventListener('mouseout', (e) => hover(e, false));
+
+    function startComment() {
+      if (!candidate) return;
+      const c = candidate;
+      getSelection()?.removeAllRanges();
+      hideTools();
+      const hit = overlapping(c);
+      if (hit) { openThread(hit.id); return; }
+      pending = { block: c.block, start: c.start, end: c.end, ...anchorOf(blocks[c.block].textContent ?? '', c.start, c.end) };
+      openId = null;
+      render();
+      openPanel(c.rect);
+    }
+    const tbButton = q('[data-toolbar-comment]');
+    tbButton.addEventListener('mousedown', (e) => e.preventDefault());
+    tbButton.addEventListener('click', startComment);
+    q('[data-actionbar-comment]').addEventListener('click', startComment);
+
+    toggle?.addEventListener('click', () => {
+      marksOn = !marksOn;
+      store.set('comments:marks', marksOn ? 'on' : 'off');
+      closePanel();
+      render();
+    });
+
+    // ---------- Painel ----------
+    function openThread(id: string) {
+      if (!threads.some((th) => th.id === id)) return;
+      pending = null;
+      openId = id;
+      hideTools();
+      render();
+      const anchor = article.querySelector(`.cm-mark[data-id="${id}"]`) ?? root.querySelector(`[data-orphan="${id}"]`);
+      openPanel(anchor?.getBoundingClientRect() ?? null);
+    }
+
+    function ago(iso: string) {
+      const d = Date.now() - new Date(iso).getTime();
+      if (d < 60_000) return t.ago.now;
+      if (d < 3_600_000) return t.ago.min(Math.round(d / 60_000));
+      if (d < 86_400_000) return t.ago.hour(Math.round(d / 3_600_000));
+      return t.ago.day(Math.round(d / 86_400_000));
+    }
+
+    function fillPanel() {
+      const th = openId ? threads.find((x) => x.id === openId) : null;
+      q('[data-quote]').textContent = `“${th ? th.quote : pending!.quote}”`;
+      const list = q('[data-list]');
+      list.hidden = !th;
+      list.replaceChildren(...(th?.comments ?? []).map((c) => {
+        const li = document.createElement('li');
+        const who = document.createElement('div');
+        who.className = 'cm-who';
+        const name = document.createElement('strong');
+        name.textContent = c.name || t.anon;
+        const time = document.createElement('time');
+        time.dateTime = c.createdAt;
+        time.textContent = ago(c.createdAt);
+        who.append(name, time);
+        const body = document.createElement('p');
+        body.textContent = c.body;
+        li.append(who, body);
+        return li;
+      }));
+      const changed = th && !locs.has(th.id);
+      q('[data-panel-title]').textContent = th ? `${t.total(th.comments.length)}${changed ? ` · ${t.changed}` : ''}` : t.newTitle;
+      q('[data-body-label]').textContent = th ? t.replyLabel : t.commentLabel;
+      bodyInput.placeholder = th ? t.replyPlaceholder : t.commentPlaceholder;
+      submit.textContent = th ? t.reply : t.publish;
+      nameInput.value ||= store.get('comments:name') ?? '';
+      emailInput.value ||= store.get('comments:email') ?? '';
+      bodyInput.value = '';
+      update();
+    }
+
+    function openPanel(anchor: DOMRect | null) {
+      fillPanel();
+      const sheet = isSheet();
+      panel.classList.toggle('is-sheet', sheet);
+      panel.classList.toggle('is-pop', !sheet);
+      q('[data-grip]').hidden = !sheet;
+      panel.hidden = false;
+      shade.hidden = !sheet;
+      if (sheet) {
+        panel.style.left = panel.style.top = '';
+        // Rola o texto para o trecho ficar à vista logo acima da folha.
+        const mark = article.querySelector(openId ? `.cm-mark[data-id="${openId}"]` : '.cm-pending');
+        const r = mark?.getBoundingClientRect();
+        const visibleBottom = innerHeight - panel.offsetHeight - 16;
+        if (r && (r.bottom > visibleBottom || r.top < 16)) {
+          scrollBy({ top: r.bottom - visibleBottom, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+        }
+      } else {
+        const w = panel.offsetWidth;
+        const a = anchor ?? new DOMRect(innerWidth / 2, 120, 0, 0);
+        panel.style.left = `${Math.max(16, Math.min(a.left + a.width / 2 - w / 2, innerWidth - w - 16)) + scrollX}px`;
+        panel.style.top = `${a.bottom + scrollY + 12}px`;
+      }
+      // No celular, abrir o teclado sozinho esconderia o trecho.
+      if (!coarse()) bodyInput.focus({ preventScroll: true });
+    }
+
+    function closePanel() {
+      if (panel.hidden) return;
+      panel.hidden = true;
+      shade.hidden = true;
+      pending = null;
+      openId = null;
+      render();
+    }
+    q('[data-close]').addEventListener('click', closePanel);
+    shade.addEventListener('click', closePanel);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closePanel(); hideTools(); } });
+    document.addEventListener('mousedown', (e) => {
+      const target = e.target as Element;
+      if (!toolbar.hidden && !toolbar.contains(target)) toolbar.hidden = true;
+      if (!panel.hidden && panel.classList.contains('is-pop') && !panel.contains(target) && !target.closest('.cm-mark, .cm-orphan')) closePanel();
+    });
+    addEventListener('resize', () => {
+      toolbar.hidden = true;
+      if (!panel.hidden && panel.classList.contains('is-sheet') !== isSheet()) closePanel();
+    });
+
+    const validEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    function update() {
+      const email = emailInput.value.trim();
+      const bad = !!email && !validEmail(email);
+      submit.disabled = sending || bad || !bodyInput.value.trim();
+      hint.textContent = bad ? t.hintBadEmail : email ? t.hintEmail : t.hintNoEmail;
+    }
+    for (const el of [bodyInput, nameInput, emailInput]) el.addEventListener('input', update);
+    bodyInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) form.requestSubmit(); });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (submit.disabled) return;
+      const name = nameInput.value.trim(), email = emailInput.value.trim();
+      const payload = {
+        post: postId,
+        body: bodyInput.value.trim(),
+        name,
+        email,
+        website: honeypot.value,
+        ...(openId ? { threadId: openId } : { anchor: { quote: pending!.quote, prefix: pending!.prefix, suffix: pending!.suffix } }),
+      };
+      const label = submit.textContent;
+      sending = true;
+      submit.textContent = t.sending;
+      update();
+      try {
+        const res = await fetch('/api/comments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!res.ok) throw new Error(res.status === 429 ? t.errRate : res.status === 503 ? t.errDown : t.errGeneric);
+        const { thread } = (await res.json()) as { thread?: Thread };
+        store.set('comments:name', name);
+        store.set('comments:email', email);
+        const wasReply = !!openId;
+        if (thread) {
+          threads = [...threads.filter((th) => th.id !== thread.id), thread];
+          openId = thread.id;
+        }
+        pending = null;
+        render();
+        fillPanel();
+        toast(wasReply ? t.replied : t.published);
+      } catch (err) {
+        hint.textContent = err instanceof Error && err.message !== 'Failed to fetch' ? err.message : t.errGeneric;
+        submit.textContent = label;
+        sending = false;
+        submit.disabled = false;
+        return;
+      }
+      sending = false;
+      update();
+    });
+
+    let toastTimer: ReturnType<typeof setTimeout>;
+    function toast(msg: string) {
+      toastEl.textContent = msg;
+      toastEl.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toastEl.hidden = true; }, 2800);
+    }
+
+    render();
+    fetch(`/api/comments?post=${encodeURIComponent(postId)}`)
+      .then((res) => (res.ok ? res.json() : { threads: [] }))
+      .then((data: { threads?: Thread[] }) => { threads = data.threads ?? []; render(); })
+      .catch(() => { /* sem comentários carregados; ainda dá para tentar comentar */ });
+  }
+</script>
+
+<style is:global>
+  :root {
+    --cm-line: rgba(15, 118, 110, 0.5);
+    --cm-active: rgba(15, 118, 110, 0.14);
+    --cm-pending: rgba(232, 176, 75, 0.32);
+    --cm-shade: rgba(10, 25, 24, 0.38);
+    --cm-shadow: 0 12px 32px rgba(10, 30, 28, 0.16), 0 2px 6px rgba(10, 30, 28, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --cm-line: rgba(95, 208, 192, 0.45);
+      --cm-active: rgba(95, 208, 192, 0.16);
+      --cm-pending: rgba(232, 176, 75, 0.28);
+      --cm-shade: rgba(0, 0, 0, 0.55);
+      --cm-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
+    }
+  }
+
+  .cm-mark {
+    text-decoration: underline dashed var(--cm-line);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 5px;
+    cursor: pointer;
+    border-radius: 2px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cm-mark.is-hover, .cm-mark.is-active { background: var(--cm-active); text-decoration-color: var(--accent); }
+  .cm-mark-end.is-hover[data-count]::after, .cm-mark-end.is-active[data-count]::after {
+    content: attr(data-count);
+    font-family: var(--mono); font-size: 0.55em; font-weight: 500; font-style: normal;
+    color: var(--accent); vertical-align: super; margin-left: 2px; line-height: 0;
+  }
+  .cm-marks-off .cm-mark:not(.cm-pending) { text-decoration: none; background: none; cursor: auto; }
+  .cm-marks-off .cm-mark-end::after { content: none !important; }
+  .cm-mark.cm-pending { background: var(--cm-pending); text-decoration: none; cursor: auto; }
+
+  .cm-orphans { display: flex; flex-direction: column; gap: 10px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--rule); }
+  .cm-orphans h2 { margin: 0; font-size: 22px; font-weight: 600; }
+  .cm-orphans p { margin: 0; font-size: 17px; color: var(--text-muted); }
+  .cm-orphans ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .cm-orphan {
+    width: 100%; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px;
+    padding: 12px 14px; border: 1px dashed var(--rule); border-radius: 8px; background: var(--surface);
+    font: inherit; text-align: left; color: inherit; cursor: pointer;
+  }
+  .cm-orphan:hover, .cm-orphan.is-active { border-color: var(--accent); }
+  .cm-orphan-quote { min-width: 0; font-style: italic; color: var(--text-muted); text-decoration: line-through; text-decoration-color: var(--rule); }
+  .cm-orphan-count { font-family: var(--mono); font-size: 12px; color: var(--accent); white-space: nowrap; }
+
+  .cm-toolbar {
+    position: absolute; z-index: 20; padding: 4px; border-radius: 8px;
+    background: var(--band); color: var(--band-text); box-shadow: var(--cm-shadow);
+  }
+  .cm-toolbar button {
+    display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 0; border-radius: 6px;
+    background: none; color: inherit; font: inherit; font-size: 15px; cursor: pointer;
+  }
+  .cm-toolbar button:hover { background: rgba(255, 255, 255, 0.1); }
+  .cm-toolbar::after {
+    content: ''; position: absolute; left: var(--arrow, 50%); bottom: -6px; width: 12px; height: 12px;
+    background: var(--band); border-radius: 2px; transform: translateX(-50%) rotate(45deg);
+  }
+  .cm-toolbar.is-below::after { bottom: auto; top: -6px; }
+
+  .cm-actionbar {
+    position: fixed; z-index: 25; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--band); color: var(--band-text); box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.18);
+  }
+  .cm-actionbar-quote { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-style: italic; font-size: 15px; color: var(--band-muted); }
+  .cm-actionbar button {
+    min-height: 44px; padding: 10px 16px; border: 0; border-radius: 8px;
+    background: var(--signal); color: #14201f; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+
+  .cm-shade { position: fixed; inset: 0; z-index: 29; background: var(--cm-shade); }
+  .cm-panel {
+    z-index: 30; display: flex; flex-direction: column; gap: 14px; padding: 18px;
+    background: var(--surface); color: var(--text); border: 1px solid var(--rule); font-family: var(--serif);
+  }
+  .cm-panel.is-pop { position: absolute; width: min(380px, calc(100vw - 32px)); max-height: 70vh; overflow: auto; border-radius: 10px; box-shadow: var(--cm-shadow); }
+  .cm-panel.is-sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; max-height: 82vh; overflow: auto; border-radius: 16px 16px 0 0;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.2);
+  }
+  .cm-grip { align-self: center; width: 40px; height: 4px; margin-top: -6px; border-radius: 2px; background: var(--rule); }
+  .cm-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .cm-panel-head span { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+  .cm-close { width: 36px; height: 36px; border: 0; border-radius: 6px; background: none; color: var(--text-muted); font-size: 22px; line-height: 1; cursor: pointer; }
+  .cm-close:hover { background: var(--paper); }
+  .cm-quote { margin: 0; padding: 2px 0 2px 14px; border-left: 3px solid var(--accent); font-size: 16px; font-style: italic; line-height: 1.5; color: var(--text-soft); overflow-wrap: anywhere; }
+  .cm-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+  .cm-list li { display: flex; flex-direction: column; gap: 4px; padding-top: 12px; border-top: 1px solid var(--rule); }
+  .cm-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 15px; }
+  .cm-who strong { font-weight: 600; }
+  .cm-who time { font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
+  .cm-list p { margin: 0; font-size: 16px; line-height: 1.55; color: var(--text-soft); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .cm-form { display: flex; flex-direction: column; gap: 10px; }
+  .cm-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .cm-field label { font-family: var(--mono); font-size: 13px; color: var(--text-muted); }
+  .cm-opt { opacity: 0.8; }
+  .cm-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cm-panel.is-sheet .cm-pair { grid-template-columns: 1fr; }
+  .cm-field input, .cm-field textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 8px;
+    background: var(--paper); color: var(--text); font: inherit; font-size: 16px; /* 16px evita o zoom automático do iOS */
+  }
+  .cm-field textarea { min-height: 84px; resize: vertical; line-height: 1.5; }
+  .cm-hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+  .cm-form-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+  .cm-hint { flex: 1 1 180px; min-width: 0; font-size: 13px; color: var(--text-muted); }
+  .cm-submit {
+    min-height: 44px; padding: 10px 18px; border: 0; border-radius: 8px;
+    background: var(--accent); color: var(--surface); font: inherit; font-weight: 600; cursor: pointer;
+  }
+  .cm-submit:disabled { opacity: 0.45; cursor: not-allowed; }
+  .cm-panel :is(input, textarea, button):focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+  .cm-toast {
+    position: fixed; z-index: 40; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    max-width: calc(100vw - 32px); padding: 10px 16px; border-radius: 8px;
+    background: var(--band); color: var(--band-text); font-size: 15px; box-shadow: var(--cm-shadow);
+  }
+</style>
