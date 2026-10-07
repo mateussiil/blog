@@ -16,6 +16,7 @@ const pt = {
   htmlLang: 'pt-BR',
   home: '/',
   otherHome: '/en/',
+  articlesPath: '/artigos/',
   nav: { projects: 'projetos', articles: 'artigos', reading: 'consumindo' },
   bio: [
     'Sou engenheiro de software e tenho interesse na interseção entre tecnologia, dados, IA e desenvolvimento de produtos. Escrevo sobre arquitetura de software, sistemas financeiros, aplicações inteligentes, experiência de desenvolvimento e os aprendizados que encontro enquanto construo software.',
@@ -45,6 +46,9 @@ const pt = {
     topic: 'Tema:',
     clear: 'Limpar filtro de tema',
     empty: 'Ainda não escrevi sobre esse tema. Escolha outro ou limpe o filtro.',
+    all: 'Ver todos os artigos',
+    pageSub: 'Tudo o que escrevi, do mais recente ao mais antigo.',
+    allThemes: 'Todos os temas',
   },
   reading: {
     title: 'Consumindo',
@@ -64,6 +68,7 @@ const en: typeof pt = {
   htmlLang: 'en',
   home: '/en/',
   otherHome: '/',
+  articlesPath: '/en/articles/',
   nav: { projects: 'projects', articles: 'writing', reading: 'reading' },
   bio: [
     'I am a software engineer interested in the intersection of technology, data, AI and product development. I write about software architecture, financial systems, intelligent applications, developer experience and what I learn while building software.',
@@ -93,6 +98,9 @@ const en: typeof pt = {
     topic: 'Topic:',
     clear: 'Clear topic filter',
     empty: 'Nothing on this topic yet. Pick another or clear the filter.',
+    all: 'See all writing',
+    pageSub: 'Everything I have written, newest first.',
+    allThemes: 'All topics',
   },
   reading: {
     title: 'Reading',

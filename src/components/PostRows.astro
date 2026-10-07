@@ -1,0 +1,69 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { copy, type Lang } from '../i18n';
+
+interface Props {
+  posts: CollectionEntry<'blog'>[];
+  lang: Lang;
+}
+const { posts, lang } = Astro.props;
+const t = copy[lang];
+
+const years = new Map<number, typeof posts>();
+for (const post of posts) {
+  const year = post.data.date.getUTCFullYear();
+  years.set(year, [...(years.get(year) ?? []), post]);
+}
+const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : '');
+---
+<div class="years">
+  {[...years].map(([year, list]) => (
+    <div class="year" data-year-group>
+      <span class="mono year-label">{year}</span>
+      <ul>
+        {list.map((post) => (
+          <li data-themes={post.data.themes.join(' ')}>
+            <a href={`/blog/${post.id}/`} class="row" lang={post.data.lang === 'en' ? 'en' : 'pt-BR'}>
+              <time class="mono" datetime={post.data.date.toISOString()}>{t.date(post.data.date)}</time>
+              <span class="row-title">{post.data.title}</span>
+              <span class="mono badge">{badge(post.data.lang)}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  ))}
+</div>
+
+<style>
+  .year {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr);
+    gap: 40px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .year-label { padding-top: 20px; font-size: 15px; font-weight: 500; color: var(--text-muted); }
+  .year ul { list-style: none; margin: 0; padding: 0; }
+
+  .row {
+    display: grid;
+    grid-template-columns: 84px minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: baseline;
+    padding: 18px 0;
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .row:hover .row-title { color: var(--accent); }
+  .row time, .badge { font-size: 13px; color: var(--text-muted); }
+  .row-title { font-size: 21px; line-height: 1.4; }
+
+  @media (max-width: 760px) {
+    .year { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .year-label { padding-top: 16px; }
+    .row { grid-template-columns: 64px minmax(0, 1fr) auto; }
+    .row-title { font-size: 19px; }
+  }
+</style>
