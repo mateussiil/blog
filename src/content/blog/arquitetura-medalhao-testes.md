@@ -3,7 +3,6 @@ title: "Uma arquitetura medalhão para testes automatizados"
 date: 2026-09-23
 excerpt: "Bronze, Silver e Gold não dizem como testar. Dizem quanto custa estar errado — uma forma de gastar esforço de teste onde a confiança realmente importa."
 themes: ["arquitetura", "devex"]
-featured: true
 originalUrl: "https://medium.com/@mateussiil/uma-arquitetura-medalh%C3%A3o-para-testes-automatizados-040e1fc437cd"
 ---
 
