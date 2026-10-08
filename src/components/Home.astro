@@ -2,7 +2,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostRows from './PostRows.astro';
-import { copy, LINKS, NOW_UPDATED, THEME_IDS, type Lang } from '../i18n';
+import { copy, LINKS, NAME, NOW_UPDATED, THEME_IDS, type Lang } from '../i18n';
 
 interface Props {
   lang: Lang;
@@ -23,6 +23,29 @@ const projetos = (await getCollection('projetos')).sort((a, b) => a.data.order -
 const destaque = projetos.find((p) => p.data.featured);
 const outros = projetos.filter((p) => !p.data.featured);
 
+// Abertura: até 3 projetos fixos na fileira de cima; os outros passam pelo rodízio embaixo.
+const fixos = projetos.filter((p) => p.data.pinned).slice(0, 3);
+const naFila = projetos.filter((p) => !fixos.includes(p));
+const ROTATING_SLOTS = 3;
+const noRodizio = naFila.slice(0, ROTATING_SLOTS);
+const fila = naFila.slice(ROTATING_SLOTS);
+// [x%, y%, giro] no computador e [x%, y px] no celular, um por lugar.
+const TOP_SLOTS = [[17, 22, -3, 28, 92], [50, 13, 2, 72, 124], [83, 22, 3, 50, 186]];
+const BOTTOM_SLOTS = [[15, 72, 3, 28, 392], [85, 72, -3, 72, 424], [50, 80, -2, 50, 484]];
+const card = (p: (typeof projetos)[number], slot: number[], pinned: boolean) => ({
+  id: p.id,
+  name: p.data.name,
+  desc: en ? p.data.descEn : p.data.desc,
+  pinned,
+  style: `--x:${slot[0]}%;--y:${slot[1]}%;--r:${slot[2]}deg;--mx:${slot[3]}%;--my:${slot[4]}px`,
+});
+const openingCards = [
+  ...fixos.map((p, i) => card(p, TOP_SLOTS[i], true)),
+  ...noRodizio.map((p, i) => card(p, BOTTOM_SLOTS[i], false)),
+];
+const queue = fila.map((p) => ({ id: p.id, name: p.data.name, desc: en ? p.data.descEn : p.data.desc }));
+const [firstNames, lastName] = [NAME.split(' ').slice(0, -1).join(' '), NAME.split(' ').at(-1)];
+
 const leituras = (await getCollection('leituras')).sort(
   (a, b) => Number(b.data.status === 'lendo') - Number(a.data.status === 'lendo')
 );
@@ -33,10 +56,40 @@ const lastTheme = THEME_IDS.length - 1;
 const themeSep = (i: number) => (i === lastTheme ? '.' : i === lastTheme - 1 ? t.and : ',');
 const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : '');
 ---
-<BaseLayout title="Mateus Silva" lang={lang} alternate={t.otherHome} canonical={t.home}>
+<BaseLayout title={NAME} lang={lang} alternate={t.otherHome} canonical={t.home}>
   <Fragment slot="hero">
-    <section class="hero">
-      <h1>Mateus Silva</h1>
+    <section class="opening" aria-label={NAME}>
+      <div class="stage" data-opening>
+        <div class="opening-name">
+          <h1>{firstNames} <em>{lastName}</em><svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c.6 6.5 5.5 11.4 12 12-6.5.6-11.4 5.5-12 12-.6-6.5-5.5-11.4-12-12C6.5 11.4 11.4 6.5 12 0Z" /></svg></h1>
+          <p class="role">{t.role}</p>
+        </div>
+        <ul class="opening-cards" aria-label={t.opening.projects}>
+          {openingCards.map((c) => (
+            <li class:list={['oc', { 'oc-pinned': c.pinned }]} style={c.style} data-id={c.id}>
+              <a href={`#projeto-${c.id}`}>
+                <span class="oc-top">
+                  <span class="oc-tile" aria-hidden="true">{c.name.charAt(0)}</span>
+                  <span class="oc-name">{c.name}</span>
+                  {c.pinned && <span class="oc-star" title={t.opening.pinned} aria-label={t.opening.pinned}>★</span>}
+                </span>
+                <span class="oc-desc">{c.desc}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        <script is:inline>
+          // Antes da primeira pintura: esconde os cards para a abertura começar só com o nome.
+          if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.currentScript.closest('[data-opening]').classList.add('is-animating');
+        </script>
+      </div>
+      <script type="application/json" id="opening-queue" set:html={JSON.stringify(queue)} />
+    </section>
+  </Fragment>
+
+  <section id="sobre" class="about" aria-labelledby="sobre-title">
+    <h2 id="sobre-title" class="eyebrow">{t.about}</h2>
+    <div class="about-body">
       {t.bio.map((p) => <p class="bio">{p}</p>)}
       <p class="themes">
         {t.themesLead}{' '}
@@ -52,11 +105,11 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
         <a class="cta-ghost" href={LINKS.github} rel="noreferrer">GitHub</a>
         <a class="cta-ghost" href={LINKS.medium} rel="noreferrer">Medium</a>
       </div>
-    </section>
+    </div>
 
-    <section class="now" id="agora" aria-labelledby="agora-title">
+    <div class="now" id="agora">
       <div class="now-head">
-        <h2 id="agora-title"><span class="dot" aria-hidden="true"></span>{t.now.title}</h2>
+        <h3><span class="dot" aria-hidden="true"></span>{t.now.title}</h3>
         <time class="mono" datetime={NOW_UPDATED.toISOString().slice(0, 10)}>{t.month(NOW_UPDATED)}</time>
       </div>
       <p>
@@ -72,8 +125,34 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
           </>
         )}
       </p>
-    </section>
-  </Fragment>
+    </div>
+  </section>
+
+  <section id="artigos" class="section">
+    <div class="section-head">
+      <h2><a href={t.articlesPath}>{t.articles.title}</a></h2>
+      <a class="all-link" href={t.articlesPath}>{t.articles.all} ({posts.length}) →</a>
+    </div>
+
+    {featured && (
+      <a class="featured-post" href={`/blog/${featured.id}/`} lang={featured.data.lang === 'en' ? 'en' : 'pt-BR'}>
+        <div class="fpost-meta">
+          <span class="pinned">{t.articles.pinned}</span>
+          <time class="mono" datetime={featured.data.date.toISOString()}>{t.date(featured.data.date, 'long')}</time>
+          {badge(featured.data.lang) && <span class="mono">{badge(featured.data.lang)}</span>}
+        </div>
+        <div class="fpost-body">
+          <span class="fpost-title">{featured.data.title}</span>
+          <span class="fpost-excerpt">{featured.data.excerpt}</span>
+        </div>
+      </a>
+    )}
+
+    <PostRows posts={recent} lang={lang} />
+    {posts.length > recent.length + (featured ? 1 : 0) && (
+      <a class="all-link all-bottom" href={t.articlesPath}>{t.articles.all} →</a>
+    )}
+  </section>
 
   <section id="projetos" class="section">
     <div class="section-head">
@@ -82,7 +161,7 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     </div>
 
     {destaque && (
-      <article class="featured-project">
+      <article class="featured-project" id={`projeto-${destaque.id}`}>
         <div class="fp-intro">
           <h3>{destaque.data.name}</h3>
           <p>{en ? destaque.data.descEn : destaque.data.desc}</p>
@@ -115,39 +194,13 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
 
     <div class="projects">
       {outros.map((p) => (
-        <article>
+        <article id={`projeto-${p.id}`}>
           <h3>{p.data.url ? <a href={p.data.url} rel="noreferrer">{p.data.name}</a> : p.data.name}</h3>
           <p>{en ? p.data.descEn : p.data.desc}</p>
           <p class="project-themes">{p.data.themes.map((id) => t.themes[id]).join(', ')}</p>
         </article>
       ))}
     </div>
-  </section>
-
-  <section id="artigos" class="section">
-    <div class="section-head">
-      <h2><a href={t.articlesPath}>{t.articles.title}</a></h2>
-      <a class="all-link" href={t.articlesPath}>{t.articles.all} ({posts.length}) →</a>
-    </div>
-
-    {featured && (
-      <a class="featured-post" href={`/blog/${featured.id}/`} lang={featured.data.lang === 'en' ? 'en' : 'pt-BR'}>
-        <div class="fpost-meta">
-          <span class="pinned">{t.articles.pinned}</span>
-          <time class="mono" datetime={featured.data.date.toISOString()}>{t.date(featured.data.date, 'long')}</time>
-          {badge(featured.data.lang) && <span class="mono">{badge(featured.data.lang)}</span>}
-        </div>
-        <div class="fpost-body">
-          <span class="fpost-title">{featured.data.title}</span>
-          <span class="fpost-excerpt">{featured.data.excerpt}</span>
-        </div>
-      </a>
-    )}
-
-    <PostRows posts={recent} lang={lang} />
-    {posts.length > recent.length + (featured ? 1 : 0) && (
-      <a class="all-link all-bottom" href={t.articlesPath}>{t.articles.all} →</a>
-    )}
   </section>
 
   <section id="consumindo" class="section section-last">
@@ -174,68 +227,237 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
   </section>
 </BaseLayout>
 
+<script>
+  // Abertura: os cards entram um a um; depois, de tempos em tempos, um vem pra frente.
+  // Os fixos têm a vez primeiro e nunca saem; os do rodízio, ao voltar, dão lugar ao próximo da fila.
+  const stage = document.querySelector<HTMLElement>('[data-opening].is-animating');
+  if (stage) {
+    const cards = Array.from(stage.querySelectorAll<HTMLElement>('.oc'));
+    const queue: { id: string; name: string; desc: string }[] = JSON.parse(document.getElementById('opening-queue')?.textContent || '[]');
+    const pinned = cards.filter((c) => c.classList.contains('oc-pinned'));
+    const ENTER_AT = 900, ENTER_GAP = 350, STEP = 2800;
+    let visible = true;
+    new IntersectionObserver(([e]) => { visible = e.isIntersecting; }).observe(stage);
+
+    const fill = (c: HTMLElement, p: { id: string; name: string; desc: string }) => {
+      c.dataset.id = p.id;
+      c.querySelector('a')!.setAttribute('href', `#projeto-${p.id}`);
+      c.querySelector('.oc-tile')!.textContent = p.name.charAt(0);
+      c.querySelector('.oc-name')!.textContent = p.name;
+      c.querySelector('.oc-desc')!.textContent = p.desc;
+    };
+
+    cards.forEach((c, i) => setTimeout(() => c.classList.add('in'), ENTER_AT + i * ENTER_GAP));
+
+    let front: HTMLElement | null = null;
+    let pinnedTurn = 0;
+    const step = () => {
+      if (!visible || document.hidden) return;
+      if (front) {
+        const old = front;
+        old.classList.remove('front');
+        if (!old.classList.contains('oc-pinned') && queue.length) {
+          setTimeout(() => {
+            old.classList.add('swap');
+            setTimeout(() => {
+              queue.push({ id: old.dataset.id!, name: old.querySelector('.oc-name')!.textContent!, desc: old.querySelector('.oc-desc')!.textContent! });
+              fill(old, queue.shift()!);
+              old.classList.remove('swap');
+            }, 500);
+          }, 700);
+        }
+      }
+      if (pinnedTurn < pinned.length) front = pinned[pinnedTurn++];
+      else {
+        const others = cards.filter((c) => c !== front);
+        front = others[Math.floor(Math.random() * others.length)] ?? front;
+      }
+      front?.classList.add('front');
+    };
+    setTimeout(() => { step(); setInterval(step, STEP); }, ENTER_AT + cards.length * ENTER_GAP + 600);
+  }
+</script>
+
 <style>
-  .hero {
-    display: flex;
-    flex-direction: column;
-    gap: 28px;
-    padding: 88px 0 72px;
+  /* Abertura: o nome no centro, 3 projetos fixos em cima e o rodízio embaixo. */
+  .opening { padding: 0 24px; }
+
+  .stage {
+    position: relative;
+    max-width: 1180px;
+    height: clamp(540px, calc(100svh - 200px), 760px);
+    margin: 0 auto;
+    isolation: isolate;
+  }
+
+  /* Sol de raios da referência, discreto no canto. */
+  .stage::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    width: 220px;
+    height: 220px;
+    right: 3%;
+    bottom: -70px;
+    border-radius: 50%;
+    background: repeating-conic-gradient(var(--orange) 0 5deg, transparent 5deg 15deg);
+    -webkit-mask: radial-gradient(circle, transparent 0 14%, #000 15%);
+    mask: radial-gradient(circle, transparent 0 14%, #000 15%);
+    opacity: 0.85;
+  }
+
+  .opening-name {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-content: center;
+    gap: 14px;
+    text-align: center;
+    pointer-events: none;
   }
 
   h1 {
-    margin: 0 0 4px;
-    font-size: 84px;
+    margin: 0;
+    font-size: clamp(56px, 8.4vw, 112px);
     font-weight: 600;
-    line-height: 1;
-    letter-spacing: -0.025em;
-    color: #ffffff;
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+    color: var(--text);
+    text-wrap: balance;
   }
+
+  h1 em { font-style: normal; color: var(--accent); }
+  .spark { width: 0.26em; height: 0.26em; margin-left: 0.04em; vertical-align: top; fill: var(--orange); }
+
+  .role { margin: 0; font-size: 19px; font-style: italic; color: var(--text-muted); }
+
+  .opening-cards { list-style: none; margin: 0; padding: 0; }
+
+  .oc {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    z-index: 1;
+    width: 230px;
+    transform: translate(-50%, -50%) scale(0.86) rotate(var(--r));
+    opacity: 0.85;
+    transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s, box-shadow 0.9s;
+  }
+
+  .oc.oc-pinned { z-index: 3; opacity: 1; transform: translate(-50%, -50%) scale(0.94) rotate(var(--r)); }
+
+  .oc a {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px;
+    border: 1px solid var(--rule-soft);
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  .oc a:hover .oc-name { color: var(--accent); }
+
+  .oc-top { display: flex; align-items: center; gap: 10px; }
+
+  .oc-tile {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--tile);
+    font-weight: 600;
+  }
+
+  .oc-name { font-size: 17px; font-weight: 600; }
+  .oc-star { margin-left: auto; color: var(--orange); font-size: 15px; line-height: 1; }
+
+  .oc-desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--text-muted);
+  }
+
+  /* Com movimento: começa só com o nome; o script faz os cards entrarem e virem pra frente. */
+  .is-animating .oc { opacity: 0; transform: translate(-50%, -50%) scale(0.6) rotate(var(--r)); }
+  .is-animating .oc.in { opacity: 0.85; transform: translate(-50%, -50%) scale(0.86) rotate(var(--r)); }
+  .is-animating .oc.oc-pinned.in { opacity: 1; transform: translate(-50%, -50%) scale(0.94) rotate(var(--r)); }
+  .is-animating .oc.front { z-index: 5; opacity: 1; transform: translate(-50%, -50%) scale(1.1) rotate(0deg); }
+  .is-animating .oc.front a { box-shadow: var(--shadow-lg); }
+  .is-animating .oc.swap { opacity: 0; transform: translate(-50%, -50%) scale(0.7) rotate(var(--r)); }
+
+  /* Sobre: começa logo abaixo da abertura, com o topo aparecendo na primeira tela. */
+  .about {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    margin-top: 8px;
+    padding: 48px 56px 52px;
+    border: 1px solid var(--rule-soft);
+    border-radius: 24px;
+    background: var(--surface);
+    box-shadow: 0 -12px 30px -22px rgba(60, 40, 10, 0.45);
+    scroll-margin-top: 24px;
+  }
+
+  .eyebrow {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .about-body { display: flex; flex-direction: column; gap: 24px; }
 
   .bio {
     margin: 0;
-    font-size: 24px;
+    font-size: 22px;
     line-height: 1.55;
-    max-width: 34em;
+    max-width: 36em;
+    color: var(--text-soft);
   }
 
   .themes {
     margin: 0;
-    font-size: 24px;
+    font-size: 22px;
     line-height: 1.7;
-    max-width: 34em;
-    color: var(--band-muted);
+    max-width: 36em;
+    color: var(--text-muted);
   }
 
   .nowrap { white-space: nowrap; }
 
   .theme {
-    background: none;
-    border: 0;
     padding: 0 2px;
-    margin: 0;
-    font: inherit;
-    color: #ffffff;
-    cursor: pointer;
+    color: var(--text);
     text-decoration: underline;
-    text-decoration-color: rgba(232, 176, 75, 0.55);
+    text-decoration-color: var(--signal-soft);
     text-decoration-thickness: 2px;
     text-underline-offset: 5px;
   }
 
-  .theme:hover { text-decoration-color: var(--signal); }
-
-  .theme[aria-pressed='true'] {
-    background: var(--signal);
-    color: var(--band);
-    border-radius: 3px;
-    text-decoration: none;
-  }
+  .theme:hover { color: var(--accent); text-decoration-color: var(--signal); }
 
   .cta {
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
-    padding-top: 8px;
+    padding-top: 4px;
   }
 
   .cta a {
@@ -243,36 +465,40 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     align-items: center;
     gap: 10px;
     min-height: 48px;
-    padding: 0 20px;
-    border-radius: 6px;
+    padding: 0 22px;
+    border-radius: 999px;
     font-size: 17px;
+    text-decoration: none;
   }
 
   .cta .cta-primary {
-    background: #ffffff;
-    color: var(--band);
+    background: linear-gradient(180deg, var(--signal-soft), var(--signal));
+    color: var(--on-signal);
     font-weight: 600;
+    box-shadow: 0 6px 14px -6px rgba(242, 165, 22, 0.7);
   }
 
-  .cta .cta-primary:hover { background: #dff2ee; color: var(--band); }
+  .cta .cta-primary:hover { color: var(--on-signal); filter: brightness(1.04); }
 
   .cta .cta-ghost {
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    color: var(--band-text);
+    border: 1px solid var(--rule);
+    color: var(--text-soft);
   }
+
+  .cta .cta-ghost:hover { border-color: var(--accent); color: var(--accent); }
 
   .now {
     display: grid;
     grid-template-columns: 180px minmax(0, 1fr);
     gap: 40px;
     align-items: baseline;
-    padding: 32px 0 44px;
-    border-top: 1px solid var(--band-rule);
+    padding-top: 28px;
+    border-top: 1px solid var(--rule);
   }
 
   .now-head { display: flex; flex-direction: column; gap: 4px; }
 
-  .now h2 {
+  .now h3 {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -280,21 +506,20 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     font-size: 22px;
     font-weight: 600;
     font-style: italic;
-    color: #ffffff;
   }
 
   .dot {
     width: 9px;
     height: 9px;
     border-radius: 50%;
-    background: var(--signal);
-    box-shadow: 0 0 0 4px rgba(232, 176, 75, 0.2);
+    background: var(--orange);
+    box-shadow: 0 0 0 4px rgba(232, 80, 30, 0.18);
   }
 
   .now time {
     padding-left: 19px;
     font-size: 13px;
-    color: var(--band-muted);
+    color: var(--text-muted);
   }
 
   .now p {
@@ -302,9 +527,10 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     font-size: 19px;
     line-height: 1.65;
     max-width: 40em;
+    color: var(--text-soft);
   }
 
-  .now p :global(strong), .now cite { color: #ffffff; }
+  .now p :global(strong), .now cite { color: var(--text); }
 
   .section {
     display: flex;
@@ -314,7 +540,7 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     border-top: 1px solid var(--rule);
   }
 
-  .section:first-child { border-top: 0; padding-top: 80px; }
+  .about + .section { border-top: 0; }
   .section-last { padding-bottom: 96px; }
 
   .section-head {
@@ -414,6 +640,10 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     border-top: 1px solid var(--rule);
   }
 
+  .featured-project, .projects article { scroll-margin-top: 24px; }
+  .featured-project:target, .projects article:target { animation: found 1.6s ease-out; }
+  @keyframes found { from { box-shadow: 0 0 0 4px var(--signal-soft); } to { box-shadow: 0 0 0 4px transparent; } }
+
   .projects h3 { margin: 0; font-size: 23px; font-weight: 600; }
   .projects h3 a { color: inherit; }
   .projects p { margin: 0; font-size: 17px; line-height: 1.55; color: var(--text-soft); }
@@ -478,12 +708,21 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
   .reading-note { padding-top: 4px; font-size: 18px; font-style: italic; line-height: 1.55; color: var(--text-soft); }
 
   @media (max-width: 760px) {
-    .hero { gap: 22px; padding: 48px 0 48px; }
-    h1 { font-size: 52px; }
-    .bio, .themes { font-size: 20px; }
+    .opening { padding: 0 12px; }
+    .stage { height: 600px; }
+    .stage::before { width: 150px; height: 150px; right: -30px; bottom: -60px; }
+    .opening-name { inset: auto 0; top: 292px; transform: translateY(-50%); padding: 0 8px; gap: 8px; }
+    h1 { font-size: 46px; }
+    .role { font-size: 15px; }
+    .oc { left: var(--mx); top: var(--my); width: 156px; }
+    .oc a { padding: 10px 12px; gap: 0; }
+    .oc-desc { display: none; }
+    .oc-tile { width: 26px; height: 26px; font-size: 14px; }
+    .oc-name { font-size: 14px; }
+    .about { padding: 32px 22px 36px; border-radius: 20px; margin-inline: -8px; }
+    .bio, .themes { font-size: 19px; }
     .now, .featured-post, .reading li { grid-template-columns: minmax(0, 1fr); gap: 12px; }
     .section { padding: 48px 0; }
-    .section:first-child { padding-top: 56px; }
     .section-head h2 { font-size: 32px; }
     .featured-project, .featured-post { padding: 24px; }
     .flow { grid-template-columns: minmax(0, 1fr); gap: 16px; }

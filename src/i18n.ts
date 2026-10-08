@@ -3,6 +3,8 @@ export type Lang = 'pt' | 'en';
 export const THEME_IDS = ['arquitetura', 'financeiro', 'ia', 'devex', 'dados', 'produto'] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 
+export const NAME = 'Mateus Silva Oliveira';
+
 export const LINKS = {
   linkedin: 'https://www.linkedin.com/in/mateussiil',
   github: 'https://github.com/mateussiil',
@@ -33,6 +35,9 @@ const pt = {
     produto: 'pensamento de produto',
   } satisfies Record<ThemeId, string>,
   linkedin: 'Conecte-se no LinkedIn',
+  role: 'Engenheiro de software. Tecnologia, dados, IA e produto.',
+  about: 'Sobre',
+  opening: { projects: 'Projetos', pinned: 'Fixo' },
   now: {
     title: 'Agora',
     working: 'Trabalhando no <strong>Leitura Curada</strong>, curadoria de leitura por IA entregue no Kindle, e no <strong>Braglog</strong>, que transforma meu histórico do GitHub em rascunhos para o LinkedIn.',
@@ -119,6 +124,9 @@ const en: typeof pt = {
     produto: 'product thinking',
   },
   linkedin: 'Connect on LinkedIn',
+  role: 'Software engineer. Technology, data, AI and product.',
+  about: 'About',
+  opening: { projects: 'Projects', pinned: 'Pinned' },
   now: {
     title: 'Now',
     working: 'Working on <strong>Leitura Curada</strong>, AI-curated reading delivered to Kindle, and <strong>Braglog</strong>, which turns my GitHub history into LinkedIn drafts.',

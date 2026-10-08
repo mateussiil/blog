@@ -1,10 +1,13 @@
-# Projetos da home. O item com `featured: true` aparece em destaque,
-# com as `sources` desenhadas como um fluxo que alimenta o `hub`.
+# Projetos da home. O item com `featured: true` aparece em destaque na seção
+# Projetos, com as `sources` desenhadas como um fluxo que alimenta o `hub`.
+# Os itens com `pinned: true` ficam fixos na fileira de cima da abertura
+# (no máximo 3, pela `order`); os outros passam pelo rodízio embaixo.
 # `order` define a ordem de exibição.
 
 - id: best-place
   order: 1
   name: "Best Place"
+  pinned: true
   featured: true
   themes: [arquitetura, dados, ia]
   desc: "Um ecossistema de serviços que cruza notícias locais, comodidades urbanas e imóveis para avaliar bairros de São Luís."
@@ -37,6 +40,7 @@
 - id: leitura-curada
   order: 3
   name: "Leitura Curada"
+  pinned: true
   themes: [ia, produto]
   desc: "Curadoria de leitura por IA entregue em EPUB ou PDF, por e-mail ou no Kindle. Por convite."
   descEn: "AI-curated reading delivered as EPUB or PDF, by e-mail or to Kindle. Invite only."
@@ -44,6 +48,7 @@
 - id: braglog
   order: 4
   name: "Braglog"
+  pinned: true
   themes: [ia, devex]
   desc: "Lê meu histórico do GitHub e escreve rascunhos de post para o LinkedIn. Nada é publicado sem eu aprovar."
   descEn: "Reads my GitHub history and drafts LinkedIn posts. Nothing goes out without my approval."
