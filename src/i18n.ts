@@ -44,7 +44,7 @@ const pt = {
     reading: 'Lendo',
     by: 'de',
   },
-  projects: { title: 'Projetos', sub: 'Quase todos com IA e uma pessoa no controle.' },
+  projects: { title: 'Projetos', sub: 'Quase todos com IA e uma pessoa no controle.', open: 'abrir' },
   articles: {
     title: 'Artigos',
     pinned: 'Fixado',
@@ -133,7 +133,7 @@ const en: typeof pt = {
     reading: 'Reading',
     by: 'by',
   },
-  projects: { title: 'Projects', sub: 'Most of them with AI and a person in charge.' },
+  projects: { title: 'Projects', sub: 'Most of them with AI and a person in charge.', open: 'open' },
   articles: {
     title: 'Writing',
     pinned: 'Pinned',
