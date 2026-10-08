@@ -20,6 +20,9 @@ const other: Lang = lang === 'pt' ? 'en' : 'pt';
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="description" content={description ?? t.bio[0]} />
   <title>{title}</title>
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   {canonical && <link rel="canonical" href={new URL(canonical, Astro.site)} />}
   {alternate && <link rel="alternate" hreflang={copy[other].htmlLang} href={new URL(alternate, Astro.site)} />}
   <link rel="preconnect" href="https://fonts.googleapis.com" />
