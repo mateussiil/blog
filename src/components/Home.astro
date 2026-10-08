@@ -160,23 +160,17 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
       <p class="section-sub">{t.projects.sub}</p>
     </div>
 
-    <div class="pj" data-projects data-default={inicial?.id}>
-      <ul class="pj-list" role="tablist" aria-label={t.projects.title} aria-orientation="vertical">
-        {projetos.map((p, i) => (
-          <li role="presentation">
-            <a role="tab" href={`#projeto-${p.id}`} id={`aba-${p.id}`} aria-controls={`projeto-${p.id}`} aria-selected={p === inicial ? 'true' : 'false'}>
-              <span class="pj-n mono">{String(i + 1).padStart(2, '0')}</span>
-              <span class="pj-name">{p.data.name}</span>
-              {fixos.includes(p) && <span class="pj-star" title={t.opening.pinned} aria-label={t.opening.pinned}>★</span>}
-            </a>
-          </li>
-        ))}
-      </ul>
-
-      <div class="pj-panels">
-        {projetos.map((p) => (
-          <article class="pj-panel" role="tabpanel" id={`projeto-${p.id}`} aria-labelledby={`aba-${p.id}`}>
-            <h3><span class="pj-tile" aria-hidden="true">{p.data.name.charAt(0)}</span>{p.data.name}</h3>
+    <ul class="pj" data-projects data-default={inicial?.id} style={`--n:${projetos.length}`}>
+      {projetos.map((p, i) => (
+        <li class="pj-item">
+          <button class="pj-tab" type="button" id={`aba-${p.id}`} aria-controls={`projeto-${p.id}`} aria-expanded={p === inicial ? 'true' : 'false'}>
+            <span class="pj-n mono">{String(i + 1).padStart(2, '0')}</span>
+            <span class="pj-name">{p.data.name}</span>
+            {fixos.includes(p) && <span class="pj-star" title={t.opening.pinned} aria-label={t.opening.pinned}>★</span>}
+          </button>
+          <article class="pj-panel" id={`projeto-${p.id}`} aria-labelledby={`nome-${p.id}`}>
+            <div class:list={['pj-cover', `cover-${i % 5}`]} aria-hidden="true"><span>{p.data.name.charAt(0)}</span></div>
+            <h3 id={`nome-${p.id}`}><span class="pj-tile" aria-hidden="true">{p.data.name.charAt(0)}</span>{p.data.name}{fixos.includes(p) && <span class="pj-star" title={t.opening.pinned} aria-label={t.opening.pinned}>★</span>}</h3>
             <p class="pj-desc">{en ? p.data.descEn : p.data.desc}</p>
             {p.data.sources && p.data.hub && (
               <div class="flow">
@@ -206,9 +200,9 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
               {p.data.url && <a class="pj-open mono" href={p.data.url} rel="noreferrer">{t.projects.open} ↗</a>}
             </div>
           </article>
-        ))}
-      </div>
-    </div>
+        </li>
+      ))}
+    </ul>
   </section>
 
   <section id="consumindo" class="section section-last">
@@ -287,36 +281,41 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
 </script>
 
 <script>
-  // Projetos: escolher um nome mostra o projeto ao lado. Links #projeto-… (como os cards da abertura) abrem o projeto certo.
+  // Projetos: no computador, os nomes ficam à esquerda e o projeto escolhido à direita;
+  // no celular, todos aparecem como cards empilhados. Links #projeto-… (como os cards da abertura) abrem o projeto certo.
   const box = document.querySelector<HTMLElement>('[data-projects]');
   if (box) {
-    const tabs = Array.from(box.querySelectorAll<HTMLAnchorElement>('[role="tab"]'));
-    const panels = Array.from(box.querySelectorAll<HTMLElement>('[role="tabpanel"]'));
-    const select = (id: string, focus = false) => {
+    const tabs = Array.from(box.querySelectorAll<HTMLButtonElement>('.pj-tab'));
+    const panels = tabs.map((t) => document.getElementById(t.getAttribute('aria-controls')!)!);
+    const narrow = matchMedia('(max-width: 760px)');
+    const smooth = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth') as ScrollBehavior;
+    const select = (id: string) => {
       const i = panels.findIndex((p) => p.id === `projeto-${id}`);
       if (i < 0) return false;
-      tabs.forEach((t, j) => { t.setAttribute('aria-selected', String(j === i)); t.tabIndex = j === i ? 0 : -1; });
-      panels.forEach((p, j) => { p.hidden = j !== i; });
-      if (focus) tabs[i].focus();
+      tabs.forEach((t, j) => t.setAttribute('aria-expanded', String(j === i)));
+      panels.forEach((p, j) => p.classList.toggle('is-active', j === i));
       return true;
     };
     const fromHash = () => location.hash.startsWith('#projeto-') && select(location.hash.slice(9));
     if (!fromHash()) select(box.dataset.default ?? '');
-    window.addEventListener('hashchange', () => { if (fromHash()) box.closest('section')?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); });
-    tabs.forEach((t) => t.addEventListener('click', (e) => {
-      e.preventDefault();
-      select(t.getAttribute('href')!.slice(9));
-      history.replaceState(null, '', t.getAttribute('href'));
-      if (matchMedia('(max-width: 760px)').matches) panels.find((p) => !p.hidden)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    box.classList.add('is-ready');
+    window.addEventListener('hashchange', () => {
+      if (!fromHash()) return;
+      const target = narrow.matches ? panels.find((p) => p.classList.contains('is-active')) : box.closest('section');
+      target?.scrollIntoView({ behavior: smooth() });
+    });
+    tabs.forEach((t, i) => t.addEventListener('click', () => {
+      select(panels[i].id.slice(8));
+      history.replaceState(null, '', `#${panels[i].id}`);
     }));
-    box.querySelector('[role="tablist"]')!.addEventListener('keydown', (e: Event) => {
-      const k = (e as KeyboardEvent).key;
-      const d = k === 'ArrowDown' ? 1 : k === 'ArrowUp' ? -1 : 0;
-      if (!d) return;
+    box.addEventListener('keydown', (e) => {
+      const d = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+      const cur = tabs.indexOf(document.activeElement as HTMLButtonElement);
+      if (!d || cur < 0) return;
       e.preventDefault();
-      const cur = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
-      const next = tabs[(cur + d + tabs.length) % tabs.length];
-      select(next.getAttribute('href')!.slice(9), true);
+      const next = (cur + d + tabs.length) % tabs.length;
+      select(panels[next].id.slice(8));
+      tabs[next].focus();
     });
   }
 </script>
@@ -608,36 +607,51 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     color: var(--text-muted);
   }
 
-  /* Projetos: lista de nomes + detalhe do escolhido */
+  /* Projetos: nomes à esquerda e o projeto escolhido à direita (no celular, sanfona). */
   .pj {
+    list-style: none;
+    margin: 0;
+    padding: 0;
     display: grid;
     grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
-    gap: 40px;
+    grid-template-rows: repeat(var(--n), auto) 1fr;
+    column-gap: 40px;
     align-items: start;
   }
 
-  .pj-list { list-style: none; margin: 0; padding: 0; position: sticky; top: 24px; }
+  .pj-item { display: contents; }
+  .pj-tab { grid-column: 1; }
+  .pj-panel { grid-column: 2; grid-row: 1 / -1; }
 
-  .pj-list a {
+  .pj-tab {
     display: flex;
     align-items: baseline;
     gap: 12px;
+    width: 100%;
     padding: 14px 4px;
+    border: 0;
     border-top: 1px solid var(--rule);
+    background: none;
     color: var(--text-muted);
-    font-size: 25px;
-    font-weight: 600;
-    line-height: 1.2;
+    font: 600 25px/1.2 var(--serif);
     letter-spacing: -0.01em;
-    text-decoration: none;
+    text-align: left;
+    cursor: pointer;
     transition: color 0.2s, padding 0.2s, box-shadow 0.2s;
   }
 
-  .pj-list li:last-child a { border-bottom: 1px solid var(--rule); }
-  .pj-list a:hover { color: var(--text); }
-  .pj-list a[aria-selected='true'] { color: var(--text); padding-left: 16px; box-shadow: inset 3px 0 0 var(--orange); }
+  .pj-item:last-child .pj-tab { border-bottom: 1px solid var(--rule); }
+  .pj-tab:hover { color: var(--text); }
+  .pj-tab[aria-expanded='true'] { color: var(--text); padding-left: 16px; box-shadow: inset 3px 0 0 var(--orange); }
   .pj-n { font-size: 12px; font-weight: 400; color: var(--text-muted); }
   .pj-star { margin-left: auto; font-size: 14px; color: var(--orange); }
+  .pj-cover { display: none; }
+  .pj-panel h3 .pj-star { margin-left: 4px; font-size: 16px; }
+
+  @media (min-width: 761px) {
+    .pj.is-ready .pj-panel:not(.is-active) { display: none; }
+    .pj-panel h3 .pj-star { display: none; }
+  }
 
   .pj-panel {
     display: flex;
@@ -651,10 +665,31 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     scroll-margin-top: 24px;
   }
 
-  /* Sem JavaScript, todos os painéis aparecem um embaixo do outro. */
-  .pj-panels { display: flex; flex-direction: column; gap: 20px; }
-  .pj-panel:target { animation: found 1.6s ease-out; }
-  @keyframes found { from { box-shadow: 0 0 0 4px var(--signal-soft); } to { box-shadow: 0 0 0 4px transparent; } }
+  /* Sem JavaScript, todos os projetos aparecem um embaixo do outro. */
+  .pj:not(.is-ready) { display: flex; flex-direction: column; gap: 20px; }
+  .pj:not(.is-ready) .pj-tab { display: none; }
+
+  /* Capas do celular, nas cores da paleta, com o sol de raios. */
+  .pj-cover { position: relative; overflow: hidden; height: 132px; margin: -22px -22px 0; padding: 0 20px 14px; align-items: flex-end; border-radius: 16px 16px 0 0; }
+  .pj-cover span { font-size: 92px; font-weight: 700; line-height: 0.8; letter-spacing: -0.04em; }
+  .pj-cover::after {
+    content: "";
+    position: absolute;
+    width: 170px;
+    height: 170px;
+    right: -46px;
+    top: -56px;
+    border-radius: 50%;
+    background: repeating-conic-gradient(currentColor 0 5deg, transparent 5deg 15deg);
+    -webkit-mask: radial-gradient(circle, transparent 0 14%, #000 15%);
+    mask: radial-gradient(circle, transparent 0 14%, #000 15%);
+    opacity: 0.35;
+  }
+  .cover-0 { background: #4a4fd6; color: #f6efe3; }
+  .cover-1 { background: #1e1b30; color: #f3ead9; }
+  .cover-2 { background: #e8501e; color: #fff6ee; }
+  .cover-3 { background: #f6b53a; color: #2a1d05; }
+  .cover-4 { background: var(--tile); color: var(--text); }
 
   .pj-panel h3 { display: flex; align-items: center; gap: 14px; margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.015em; }
 
@@ -798,10 +833,16 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     .section { padding: 48px 0; }
     .section-head h2 { font-size: 32px; }
     .featured-post { padding: 24px; }
-    .pj { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-    .pj-list { position: static; }
-    .pj-list a { font-size: 21px; padding: 12px 4px; }
-    .pj-panel { padding: 24px; }
+    .pj.is-ready { display: flex; flex-direction: column; gap: 18px; }
+    .pj-item { display: block; }
+    .pj .pj-tab { display: none; }
+    .pj-panel { padding: 22px; border-radius: 16px; gap: 14px; overflow: hidden; }
+    .pj-cover { display: flex; }
+    .pj-panel h3 { font-size: 24px; }
+    .pj-panel h3 .pj-tile { display: none; }
+    .pj-desc { font-size: 17px; }
+    .flow-sources li > span:not(.repo) { display: none; }
+    .flow-sources li { padding: 8px 12px; }
     .pj-panel h3 { font-size: 28px; }
     .flow { grid-template-columns: minmax(0, 1fr); gap: 16px; }
     .flow-lines { display: none; }
