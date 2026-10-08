@@ -10,7 +10,7 @@ Site pessoal que apresenta quem é o autor, os artigos que ele escreve e os proj
 | Card de projeto | Representação curta de um projeto na abertura: nome e uma linha de descrição. Clicar abre o projeto na seção Projetos. |
 | Projeto fixo (`pinned`) | Projeto que fica sempre na fileira de cima da abertura e nunca sai dela. No máximo 3; se houver mais marcados, valem os 3 primeiros pela ordem. |
 | Rodízio | Os lugares da abertura que não são fixos. Por eles passam, um de cada vez, todos os projetos que não são fixos. |
-| Seção Projetos | No computador, lista com os nomes de todos os projetos e, ao lado, o projeto escolhido em detalhe: descrição, temas, link e, quando houver, o fluxo das fontes que o alimentam. No celular, todos os projetos aparecem como cards com capa, um embaixo do outro. |
+| Seção Projetos | No computador, lista com os nomes de todos os projetos e, ao lado, o projeto escolhido em detalhe: descrição, temas, link e, quando houver, o fluxo das fontes que o alimentam. No celular, todos os projetos aparecem como cards, um embaixo do outro. |
 | Projeto em destaque (`featured`) | Projeto que a seção Projetos mostra aberto quando a página carrega. Não tem relação com a abertura. |
 | Sobre | Seção logo após a abertura com o resumo do autor: bio, temas, "Agora" e "Consumindo". |
 

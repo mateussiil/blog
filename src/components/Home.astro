@@ -169,7 +169,6 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
             {fixos.includes(p) && <span class="pj-star" title={t.opening.pinned} aria-label={t.opening.pinned}>★</span>}
           </button>
           <article class="pj-panel" id={`projeto-${p.id}`} aria-labelledby={`nome-${p.id}`}>
-            <div class:list={['pj-cover', `cover-${i % 5}`]} aria-hidden="true"><span>{p.data.name.charAt(0)}</span></div>
             <h3 id={`nome-${p.id}`}><span class="pj-tile" aria-hidden="true">{p.data.name.charAt(0)}</span>{p.data.name}{fixos.includes(p) && <span class="pj-star" title={t.opening.pinned} aria-label={t.opening.pinned}>★</span>}</h3>
             <p class="pj-desc">{en ? p.data.descEn : p.data.desc}</p>
             {p.data.sources && p.data.hub && (
@@ -645,7 +644,6 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
   .pj-tab[aria-expanded='true'] { color: var(--text); padding-left: 16px; box-shadow: inset 3px 0 0 var(--orange); }
   .pj-n { font-size: 12px; font-weight: 400; color: var(--text-muted); }
   .pj-star { margin-left: auto; font-size: 14px; color: var(--orange); }
-  .pj-cover { display: none; }
   .pj-panel h3 .pj-star { margin-left: 4px; font-size: 16px; }
 
   @media (min-width: 761px) {
@@ -669,27 +667,6 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
   .pj:not(.is-ready) { display: flex; flex-direction: column; gap: 20px; }
   .pj:not(.is-ready) .pj-tab { display: none; }
 
-  /* Capas do celular, nas cores da paleta, com o sol de raios. */
-  .pj-cover { position: relative; overflow: hidden; height: 132px; margin: -22px -22px 0; padding: 0 20px 14px; align-items: flex-end; border-radius: 16px 16px 0 0; }
-  .pj-cover span { font-size: 92px; font-weight: 700; line-height: 0.8; letter-spacing: -0.04em; }
-  .pj-cover::after {
-    content: "";
-    position: absolute;
-    width: 170px;
-    height: 170px;
-    right: -46px;
-    top: -56px;
-    border-radius: 50%;
-    background: repeating-conic-gradient(currentColor 0 5deg, transparent 5deg 15deg);
-    -webkit-mask: radial-gradient(circle, transparent 0 14%, #000 15%);
-    mask: radial-gradient(circle, transparent 0 14%, #000 15%);
-    opacity: 0.35;
-  }
-  .cover-0 { background: #4a4fd6; color: #f6efe3; }
-  .cover-1 { background: #1e1b30; color: #f3ead9; }
-  .cover-2 { background: #e8501e; color: #fff6ee; }
-  .cover-3 { background: #f6b53a; color: #2a1d05; }
-  .cover-4 { background: var(--tile); color: var(--text); }
 
   .pj-panel h3 { display: flex; align-items: center; gap: 14px; margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.015em; }
 
@@ -836,16 +813,24 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     .pj.is-ready { display: flex; flex-direction: column; gap: 18px; }
     .pj-item { display: block; }
     .pj .pj-tab { display: none; }
-    .pj-panel { padding: 22px; border-radius: 16px; gap: 14px; overflow: hidden; }
-    .pj-cover { display: flex; }
-    .pj-panel h3 { font-size: 24px; }
-    .pj-panel h3 .pj-tile { display: none; }
-    .pj-desc { font-size: 17px; }
+    /* No celular, um card por projeto: nome, descrição e temas; o link vai pro canto de cima. */
+    .pj-panel { position: relative; padding: 22px; border-radius: 16px; gap: 16px; }
+    .pj-panel h3 { font-size: 24px; gap: 12px; }
+    .pj-panel:has(.pj-open) h3 { padding-right: 64px; }
+    .pj-tile { width: 40px; height: 40px; font-size: 19px; }
+    .pj-desc { font-size: 17px; order: 1; }
+    .pj-foot { order: 2; padding-top: 0; border-top: 0; }
+    .flow { order: 3; }
+    .pj-open { position: absolute; top: 32px; right: 22px; }
     .flow-sources li > span:not(.repo) { display: none; }
-    .flow-sources li { padding: 8px 12px; }
+    .flow-sources li { padding: 10px 12px; }
+    .repo { overflow-wrap: anywhere; }
     .pj-panel h3 { font-size: 28px; }
-    .flow { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-    .flow-lines { display: none; }
+    .flow { grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr); }
+    .flow-lines { width: 24px; height: 200px; }
+    .flow-hub { padding: 16px; }
+    .flow-hub strong { font-size: 18px; }
+    .hub-desc { display: none; }
     .fpost-meta { flex-direction: row; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
     .fpost-title { font-size: 28px; }
     .reading-title { font-size: 19px; }
