@@ -1,5 +1,5 @@
 ---
-import { copy, LINKS, type Lang } from '../i18n';
+import { copy, LINKS, NAME, type Lang } from '../i18n';
 
 interface Props {
   title: string;
@@ -30,10 +30,10 @@ const other: Lang = lang === 'pt' ? 'en' : 'pt';
   />
 </head>
 <body>
-  <div class="band">
+  <div class="top">
     <div class="wrap">
       <header class="site-header">
-        <a class="brand" href={t.home}>mateus silva</a>
+        <a class="brand" href={t.home}>{NAME.toLowerCase()}</a>
         <nav aria-label="Principal">
           <a href={`${t.home}#projetos`}>{t.nav.projects}</a>
           <a href={t.articlesPath}>{t.nav.articles}</a>
@@ -44,8 +44,8 @@ const other: Lang = lang === 'pt' ? 'en' : 'pt';
           </span>
         </nav>
       </header>
-      <slot name="hero" />
     </div>
+    <slot name="hero" />
   </div>
 
   <main class="wrap">
@@ -54,7 +54,7 @@ const other: Lang = lang === 'pt' ? 'en' : 'pt';
 
   <footer class="band site-footer">
     <div class="wrap footer-inner">
-      <span>Mateus Silva, {new Date().getFullYear()}</span>
+      <span>{NAME}, {new Date().getFullYear()}</span>
       <span class="footer-links">
         <a href={LINKS.linkedin} rel="noreferrer">LinkedIn</a>
         <a href={LINKS.github} rel="noreferrer">GitHub</a>
@@ -66,37 +66,51 @@ const other: Lang = lang === 'pt' ? 'en' : 'pt';
 </html>
 
 <style is:global>
+  /* Paleta: creme de fundo, índigo para ênfase, laranja do sol de raios, âmbar para foco e chamadas. */
   :root {
-    --band: #0e3b3a;
-    --band-text: #e6efec;
-    --band-muted: #a9c2bd;
+    --paper: #f6efe3;
+    --surface: #fffaf2;
+    --tile: #f1e2c6;
+    --text: #17151f;
+    --text-soft: #3a3646;
+    --text-muted: #6a6574;
+    --rule: #e3d4bb;
+    --rule-soft: #ebdfcb;
+    --accent: #4a4fd6;
+    --accent-hover: #383cb8;
+    --accent-soft: #e7e6fb;
+    --orange: #e8501e;
+    --signal: #f2a516;
+    --signal-soft: #fbcb57;
+    --on-signal: #2a1d05;
+    --band: #1e1b30;
+    --band-text: #f3ead9;
+    --band-muted: #b9b2c6;
     --band-rule: rgba(255, 255, 255, 0.16);
-    --paper: #e9efec;
-    --surface: #f7faf9;
-    --text: #14201f;
-    --text-soft: #2b3836;
-    --text-muted: #52615e;
-    --rule: #c9d5d1;
-    --rule-soft: #d3ddd9;
-    --accent: #0f766e;
-    --accent-hover: #0b5a54;
-    --signal: #e8b04b;
+    --shadow: 0 1px 2px rgba(60, 40, 10, 0.06);
+    --shadow-lg: 0 18px 30px -10px rgba(60, 40, 10, 0.28), 0 4px 10px -4px rgba(60, 40, 10, 0.1);
     --serif: 'Source Serif 4', Georgia, serif;
     --mono: 'IBM Plex Mono', ui-monospace, monospace;
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --band: #0b2f2e;
-      --paper: #121b1a;
-      --surface: #182423;
-      --text: #e3ebe8;
-      --text-soft: #c5d3cf;
-      --text-muted: #93a6a2;
-      --rule: #2a3836;
-      --rule-soft: #2a3836;
-      --accent: #5fd0c0;
-      --accent-hover: #8fe3d7;
+      --paper: #15131d;
+      --surface: #1d1a28;
+      --tile: #2a2233;
+      --text: #f6efe3;
+      --text-soft: #ddd4c4;
+      --text-muted: #a59fb0;
+      --rule: #2c2839;
+      --rule-soft: #2c2839;
+      --accent: #9b9eff;
+      --accent-hover: #bfc1ff;
+      --accent-soft: #2a2a5a;
+      --orange: #f26a3a;
+      --band: #0f0d16;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 18px 30px -10px rgba(0, 0, 0, 0.6);
+      color-scheme: dark;
     }
   }
 
@@ -135,7 +149,11 @@ const other: Lang = lang === 'pt' ? 'en' : 'pt';
   }
 
   .band a { color: var(--band-muted); text-decoration: none; }
-  .band a:hover { color: #ffffff; }
+  .band a:hover { color: var(--band-text); }
+
+  .top { background: var(--paper); }
+  .top .site-header a { color: var(--text-muted); text-decoration: none; }
+  .top .site-header a:hover { color: var(--text); }
 
   .site-header {
     display: flex;
@@ -146,8 +164,8 @@ const other: Lang = lang === 'pt' ? 'en' : 'pt';
     padding: 28px 0;
   }
 
-  .band .brand {
-    color: #ffffff;
+  .top .site-header .brand {
+    color: var(--text);
     font-weight: 600;
     font-size: 19px;
   }
@@ -164,11 +182,11 @@ const other: Lang = lang === 'pt' ? 'en' : 'pt';
     display: inline-flex;
     gap: 2px;
     padding: 3px;
-    border: 1px solid var(--band-rule);
+    border: 1px solid var(--rule);
     border-radius: 999px;
   }
 
-  .band .lang-switch a {
+  .top .lang-switch a {
     font-family: var(--mono);
     font-size: 13px;
     min-width: 40px;
@@ -177,9 +195,9 @@ const other: Lang = lang === 'pt' ? 'en' : 'pt';
     text-align: center;
   }
 
-  .band .lang-switch a[aria-current] {
-    background: #ffffff;
-    color: var(--band);
+  .top .lang-switch a[aria-current] {
+    background: var(--accent);
+    color: var(--surface);
   }
 
   .site-footer { margin-top: 0; }

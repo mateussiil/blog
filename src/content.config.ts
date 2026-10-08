@@ -43,6 +43,8 @@ const projetos = defineCollection({
     order: z.number(),
     url: z.string().url().optional(),
     featured: z.boolean().default(false),
+    // Fixo na fileira de cima da abertura da home (no máximo 3, pela ordem).
+    pinned: z.boolean().default(false),
     themes: z.array(theme).default([]),
     ...bilingual,
     sources: z.array(z.object({ repo: z.string(), ...bilingual })).optional(),
