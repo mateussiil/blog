@@ -1,5 +1,5 @@
-# Projetos da home. O item com `featured: true` aparece em destaque na seção
-# Projetos, com as `sources` desenhadas como um fluxo que alimenta o `hub`.
+# Projetos da home. O item com `featured: true` é o que a seção Projetos mostra
+# aberto ao carregar. Quem tem `sources` e `hub` ganha o fluxo desenhado no detalhe.
 # Os itens com `pinned: true` ficam fixos na fileira de cima da abertura
 # (no máximo 3, pela `order`); os outros passam pelo rodízio embaixo.
 # `order` define a ordem de exibição.

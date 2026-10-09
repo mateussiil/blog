@@ -20,8 +20,8 @@ const HOME_POSTS = 5;
 const recent = posts.filter((p) => p !== featured).slice(0, HOME_POSTS);
 
 const projetos = (await getCollection('projetos')).sort((a, b) => a.data.order - b.data.order);
-const destaque = projetos.find((p) => p.data.featured);
-const outros = projetos.filter((p) => !p.data.featured);
+// Seção Projetos: lista à esquerda e o projeto escolhido à direita; abre no projeto em destaque.
+const inicial = projetos.find((p) => p.data.featured) ?? projetos[0];
 
 // Abertura: até 3 projetos fixos na fileira de cima; os outros passam pelo rodízio embaixo.
 const fixos = projetos.filter((p) => p.data.pinned).slice(0, 3);
@@ -160,47 +160,48 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
       <p class="section-sub">{t.projects.sub}</p>
     </div>
 
-    {destaque && (
-      <article class="featured-project" id={`projeto-${destaque.id}`}>
-        <div class="fp-intro">
-          <h3>{destaque.data.name}</h3>
-          <p>{en ? destaque.data.descEn : destaque.data.desc}</p>
-        </div>
-        {destaque.data.sources && destaque.data.hub && (
-          <div class="flow">
-            <ul class="flow-sources">
-              {destaque.data.sources.map((s) => (
-                <li>
-                  <span class="mono repo">{s.repo}</span>
-                  <span>{en ? s.descEn : s.desc}</span>
-                </li>
-              ))}
-            </ul>
-            <svg class="flow-lines" width="56" height="240" viewBox="0 0 56 240" fill="none" aria-hidden="true">
-              <path d="M0 40 C28 40 28 120 52 120" />
-              <path d="M0 120 L52 120" />
-              <path d="M0 200 C28 200 28 120 52 120" />
-              <path d="M46 115 L53 120 L46 125" />
-            </svg>
-            <div class="flow-hub">
-              <strong>{en ? destaque.data.hub.titleEn : destaque.data.hub.title}</strong>
-              {destaque.data.hub.repos.map((r) => <span class="mono">{r}</span>)}
-              <span class="hub-desc">{en ? destaque.data.hub.descEn : destaque.data.hub.desc}</span>
+    <ul class="pj" data-projects data-default={inicial?.id} style={`--n:${projetos.length}`}>
+      {projetos.map((p, i) => (
+        <li class="pj-item">
+          <button class="pj-tab" type="button" id={`aba-${p.id}`} aria-controls={`projeto-${p.id}`} aria-expanded={p === inicial ? 'true' : 'false'}>
+            <span class="pj-n mono">{String(i + 1).padStart(2, '0')}</span>
+            <span class="pj-name">{p.data.name}</span>
+            {fixos.includes(p) && <span class="pj-star" title={t.opening.pinned} aria-label={t.opening.pinned}>★</span>}
+          </button>
+          <article class="pj-panel" id={`projeto-${p.id}`} aria-labelledby={`nome-${p.id}`}>
+            <h3 id={`nome-${p.id}`}><span class="pj-tile" aria-hidden="true">{p.data.name.charAt(0)}</span>{p.data.name}{fixos.includes(p) && <span class="pj-star" title={t.opening.pinned} aria-label={t.opening.pinned}>★</span>}</h3>
+            <p class="pj-desc">{en ? p.data.descEn : p.data.desc}</p>
+            {p.data.sources && p.data.hub && (
+              <div class="flow">
+                <ul class="flow-sources">
+                  {p.data.sources.map((s) => (
+                    <li>
+                      <span class="mono repo">{s.repo}</span>
+                      <span>{en ? s.descEn : s.desc}</span>
+                    </li>
+                  ))}
+                </ul>
+                <svg class="flow-lines" width="40" height="240" viewBox="0 0 40 240" fill="none" aria-hidden="true">
+                  <path d="M0 40 C20 40 20 120 36 120" />
+                  <path d="M0 120 L36 120" />
+                  <path d="M0 200 C20 200 20 120 36 120" />
+                  <path d="M30 115 L37 120 L30 125" />
+                </svg>
+                <div class="flow-hub">
+                  <strong>{en ? p.data.hub.titleEn : p.data.hub.title}</strong>
+                  {p.data.hub.repos.map((r) => <span class="mono">{r}</span>)}
+                  <span class="hub-desc">{en ? p.data.hub.descEn : p.data.hub.desc}</span>
+                </div>
+              </div>
+            )}
+            <div class="pj-foot">
+              <span class="pj-chips">{p.data.themes.map((id) => <span class="chip mono">{t.themes[id]}</span>)}</span>
+              {p.data.url && <a class="pj-open mono" href={p.data.url} rel="noreferrer">{t.projects.open} ↗</a>}
             </div>
-          </div>
-        )}
-      </article>
-    )}
-
-    <div class="projects">
-      {outros.map((p) => (
-        <article id={`projeto-${p.id}`}>
-          <h3>{p.data.url ? <a href={p.data.url} rel="noreferrer">{p.data.name}</a> : p.data.name}</h3>
-          <p>{en ? p.data.descEn : p.data.desc}</p>
-          <p class="project-themes">{p.data.themes.map((id) => t.themes[id]).join(', ')}</p>
-        </article>
+          </article>
+        </li>
       ))}
-    </div>
+    </ul>
   </section>
 
   <section id="consumindo" class="section section-last">
@@ -275,6 +276,46 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
       front?.classList.add('front');
     };
     setTimeout(() => { step(); setInterval(step, STEP); }, ENTER_AT + cards.length * ENTER_GAP + 600);
+  }
+</script>
+
+<script>
+  // Projetos: no computador, os nomes ficam à esquerda e o projeto escolhido à direita;
+  // no celular, todos aparecem como cards empilhados. Links #projeto-… (como os cards da abertura) abrem o projeto certo.
+  const box = document.querySelector<HTMLElement>('[data-projects]');
+  if (box) {
+    const tabs = Array.from(box.querySelectorAll<HTMLButtonElement>('.pj-tab'));
+    const panels = tabs.map((t) => document.getElementById(t.getAttribute('aria-controls')!)!);
+    const narrow = matchMedia('(max-width: 760px)');
+    const smooth = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth') as ScrollBehavior;
+    const select = (id: string) => {
+      const i = panels.findIndex((p) => p.id === `projeto-${id}`);
+      if (i < 0) return false;
+      tabs.forEach((t, j) => t.setAttribute('aria-expanded', String(j === i)));
+      panels.forEach((p, j) => p.classList.toggle('is-active', j === i));
+      return true;
+    };
+    const fromHash = () => location.hash.startsWith('#projeto-') && select(location.hash.slice(9));
+    if (!fromHash()) select(box.dataset.default ?? '');
+    box.classList.add('is-ready');
+    window.addEventListener('hashchange', () => {
+      if (!fromHash()) return;
+      const target = narrow.matches ? panels.find((p) => p.classList.contains('is-active')) : box.closest('section');
+      target?.scrollIntoView({ behavior: smooth() });
+    });
+    tabs.forEach((t, i) => t.addEventListener('click', () => {
+      select(panels[i].id.slice(8));
+      history.replaceState(null, '', `#${panels[i].id}`);
+    }));
+    box.addEventListener('keydown', (e) => {
+      const d = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+      const cur = tabs.indexOf(document.activeElement as HTMLButtonElement);
+      if (!d || cur < 0) return;
+      e.preventDefault();
+      const next = (cur + d + tabs.length) % tabs.length;
+      select(panels[next].id.slice(8));
+      tabs[next].focus();
+    });
   }
 </script>
 
@@ -565,24 +606,91 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     color: var(--text-muted);
   }
 
-  /* Projetos */
-  .featured-project {
-    display: flex;
-    flex-direction: column;
-    gap: 28px;
-    padding: 40px;
-    border: 1px solid var(--rule-soft);
-    border-radius: 10px;
-    background: var(--surface);
+  /* Projetos: nomes à esquerda e o projeto escolhido à direita (no celular, sanfona). */
+  .pj {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+    grid-template-rows: repeat(var(--n), auto) 1fr;
+    column-gap: 40px;
+    align-items: start;
   }
 
-  .fp-intro { display: flex; flex-direction: column; gap: 10px; max-width: 40em; }
-  .fp-intro h3 { margin: 0; font-size: 32px; font-weight: 700; }
-  .fp-intro p { margin: 0; font-size: 19px; line-height: 1.6; color: var(--text-soft); }
+  .pj-item { display: contents; }
+  .pj-tab { grid-column: 1; }
+  .pj-panel { grid-column: 2; grid-row: 1 / -1; }
+
+  .pj-tab {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 4px;
+    border: 0;
+    border-top: 1px solid var(--rule);
+    background: none;
+    color: var(--text-muted);
+    font: 600 25px/1.2 var(--serif);
+    letter-spacing: -0.01em;
+    text-align: left;
+    cursor: pointer;
+    transition: color 0.2s, padding 0.2s, box-shadow 0.2s;
+  }
+
+  .pj-item:last-child .pj-tab { border-bottom: 1px solid var(--rule); }
+  .pj-tab:hover { color: var(--text); }
+  .pj-tab[aria-expanded='true'] { color: var(--text); padding-left: 16px; box-shadow: inset 3px 0 0 var(--orange); }
+  .pj-n { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+  .pj-star { margin-left: auto; font-size: 14px; color: var(--orange); }
+  .pj-panel h3 .pj-star { margin-left: 4px; font-size: 16px; }
+
+  @media (min-width: 761px) {
+    .pj.is-ready .pj-panel:not(.is-active) { display: none; }
+    .pj-panel h3 .pj-star { display: none; }
+  }
+
+  .pj-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 36px;
+    border: 1px solid var(--rule-soft);
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    scroll-margin-top: 24px;
+  }
+
+  /* Sem JavaScript, todos os projetos aparecem um embaixo do outro. */
+  .pj:not(.is-ready) { display: flex; flex-direction: column; gap: 20px; }
+  .pj:not(.is-ready) .pj-tab { display: none; }
+
+
+  .pj-panel h3 { display: flex; align-items: center; gap: 14px; margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.015em; }
+
+  .pj-tile {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: var(--tile);
+    font-size: 21px;
+  }
+
+  .pj-desc { margin: 0; font-size: 19px; line-height: 1.6; color: var(--text-soft); max-width: 36em; }
+
+  .pj-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding-top: 16px; border-top: 1px solid var(--rule); }
+  .pj-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { padding: 2px 10px; border: 1px solid var(--rule); border-radius: 999px; font-size: 12px; color: var(--text-soft); }
+  .pj-open { margin-left: auto; font-size: 14px; text-decoration: none; }
 
   .flow {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 56px 260px;
+    grid-template-columns: minmax(0, 1fr) 40px minmax(0, 220px);
     align-items: center;
   }
 
@@ -592,23 +700,23 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
   }
 
   .flow-sources li {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    padding: 14px 18px;
+    padding: 12px 16px;
     border: 1px solid var(--rule-soft);
-    border-radius: 6px;
+    border-radius: 8px;
     background: var(--paper);
-    font-size: 16px;
+    font-size: 15px;
     line-height: 1.45;
     color: var(--text-muted);
   }
 
-  .repo { font-size: 14px; font-weight: 500; color: var(--text); }
+  .repo { font-size: 13px; font-weight: 500; color: var(--text); }
 
   .flow-lines path { stroke: var(--accent); stroke-width: 1.5; }
 
@@ -616,38 +724,15 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding: 22px;
-    border-radius: 6px;
+    padding: 20px;
+    border-radius: 8px;
     background: var(--band);
     color: var(--band-muted);
     font-size: 13px;
   }
 
-  .flow-hub strong { font-size: 21px; color: #ffffff; }
+  .flow-hub strong { font-size: 20px; color: var(--band-text); }
   .hub-desc { font-family: var(--serif); font-size: 15px; line-height: 1.45; color: var(--band-text); }
-
-  .projects {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 48px;
-  }
-
-  .projects article {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 24px 0 28px;
-    border-top: 1px solid var(--rule);
-  }
-
-  .featured-project, .projects article { scroll-margin-top: 24px; }
-  .featured-project:target, .projects article:target { animation: found 1.6s ease-out; }
-  @keyframes found { from { box-shadow: 0 0 0 4px var(--signal-soft); } to { box-shadow: 0 0 0 4px transparent; } }
-
-  .projects h3 { margin: 0; font-size: 23px; font-weight: 600; }
-  .projects h3 a { color: inherit; }
-  .projects p { margin: 0; font-size: 17px; line-height: 1.55; color: var(--text-soft); }
-  .projects .project-themes { font-size: 15px; font-style: italic; color: var(--text-muted); }
 
   /* Artigos */
   .section-head h2 a { color: inherit; text-decoration: none; }
@@ -724,10 +809,28 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     .now, .featured-post, .reading li { grid-template-columns: minmax(0, 1fr); gap: 12px; }
     .section { padding: 48px 0; }
     .section-head h2 { font-size: 32px; }
-    .featured-project, .featured-post { padding: 24px; }
-    .flow { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-    .flow-lines { display: none; }
-    .projects { grid-template-columns: minmax(0, 1fr); }
+    .featured-post { padding: 24px; }
+    .pj.is-ready { display: flex; flex-direction: column; gap: 18px; }
+    .pj-item { display: block; }
+    .pj .pj-tab { display: none; }
+    /* No celular, um card por projeto: nome, descrição e temas; o link vai pro canto de cima. */
+    .pj-panel { position: relative; padding: 22px; border-radius: 16px; gap: 16px; }
+    .pj-panel h3 { font-size: 24px; gap: 12px; }
+    .pj-panel:has(.pj-open) h3 { padding-right: 64px; }
+    .pj-tile { width: 40px; height: 40px; font-size: 19px; }
+    .pj-desc { font-size: 17px; order: 1; }
+    .pj-foot { order: 2; padding-top: 0; border-top: 0; }
+    .flow { order: 3; }
+    .pj-open { position: absolute; top: 32px; right: 22px; }
+    .flow-sources li > span:not(.repo) { display: none; }
+    .flow-sources li { padding: 10px 12px; }
+    .repo { overflow-wrap: anywhere; }
+    .pj-panel h3 { font-size: 28px; }
+    .flow { grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr); }
+    .flow-lines { width: 24px; height: 200px; }
+    .flow-hub { padding: 16px; }
+    .flow-hub strong { font-size: 18px; }
+    .hub-desc { display: none; }
     .fpost-meta { flex-direction: row; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
     .fpost-title { font-size: 28px; }
     .reading-title { font-size: 19px; }
