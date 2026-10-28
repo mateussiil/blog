@@ -169,7 +169,7 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
             {fixos.includes(p) && <span class="pj-star" title={t.opening.pinned} aria-label={t.opening.pinned}>★</span>}
           </button>
           <article class="pj-panel" id={`projeto-${p.id}`} aria-labelledby={`nome-${p.id}`}>
-            <h3 id={`nome-${p.id}`}><span class="pj-tile" aria-hidden="true">{p.data.name.charAt(0)}</span>{p.data.name}{fixos.includes(p) && <span class="pj-star" title={t.opening.pinned} aria-label={t.opening.pinned}>★</span>}</h3>
+            <h3 id={`nome-${p.id}`}><span class="pj-tile" aria-hidden="true">{p.data.icon ? <img src={p.data.icon} alt="" width="44" height="44" /> : p.data.name.charAt(0)}</span>{p.data.name}{fixos.includes(p) && <span class="pj-star" title={t.opening.pinned} aria-label={t.opening.pinned}>★</span>}</h3>
             <p class="pj-desc">{en ? p.data.descEn : p.data.desc}</p>
             {p.data.sources && p.data.hub && (
               <div class="flow">
@@ -679,7 +679,10 @@ const badge = (postLang: Lang) => (postLang !== lang ? postLang.toUpperCase() : 
     border-radius: 10px;
     background: var(--tile);
     font-size: 21px;
+    overflow: hidden;
   }
+
+  .pj-tile img { width: 100%; height: 100%; }
 
   .pj-desc { margin: 0; font-size: 19px; line-height: 1.6; color: var(--text-soft); max-width: 36em; }
 

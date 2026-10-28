@@ -11,6 +11,7 @@
   featured: true
   themes: [arquitetura, dados, ia]
   url: "https://www.vizin.mateussiil.com.br/"
+  icon: "/images/projetos/vizin.svg"
   desc: "Avalia bairros de São Luís cruzando notícias locais, comodidades urbanas e imóveis."
   descEn: "Rates neighbourhoods in São Luís by combining local news, urban amenities and real-estate listings."
 

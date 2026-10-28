@@ -42,6 +42,8 @@ const projetos = defineCollection({
     name: z.string(),
     order: z.number(),
     url: z.string().url().optional(),
+    // Caminho de um ícone em public/; sem ele o card mostra a inicial do nome.
+    icon: z.string().optional(),
     featured: z.boolean().default(false),
     // Fixo na fileira de cima da abertura da home (no máximo 3, pela ordem).
     pinned: z.boolean().default(false),
