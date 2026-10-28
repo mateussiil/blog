@@ -10,24 +10,9 @@
   pinned: true
   featured: true
   themes: [arquitetura, dados, ia]
-  desc: "Um ecossistema de serviços que cruza notícias locais, comodidades urbanas e imóveis para avaliar bairros de São Luís."
-  descEn: "A service ecosystem that combines local news, urban amenities and real-estate listings to rate neighbourhoods in São Luís."
-  sources:
-    - repo: news-scrapping
-      desc: "Lê 7 jornais locais, classifica violência e risco climático com IA e localiza cada evento no bairro."
-      descEn: "Reads 7 local newspapers, classifies violence and climate risk with AI and places each event in a neighbourhood."
-    - repo: urban-data-collector
-      desc: "Mapeia escolas, hospitais, parques e mercados de cada bairro via Google Places."
-      descEn: "Maps schools, hospitals, parks and shops in each neighbourhood via Google Places."
-    - repo: urban-property-crawler
-      desc: "Coleta anúncios de imóveis com crawler distribuído e processamento assíncrono."
-      descEn: "Collects property listings with a distributed crawler and async processing."
-  hub:
-    title: "Score por bairro"
-    titleEn: "Neighbourhood score"
-    repos: [best-place-node, best-place]
-    desc: "API em Node/Prisma e front-end em React que juntam as três fontes."
-    descEn: "Node/Prisma API and React front end that bring the three sources together."
+  url: "https://www.vizin.mateussiil.com.br/"
+  desc: "Avalia bairros de São Luís cruzando notícias locais, comodidades urbanas e imóveis."
+  descEn: "Rates neighbourhoods in São Luís by combining local news, urban amenities and real-estate listings."
 
 - id: recorder
   order: 2
