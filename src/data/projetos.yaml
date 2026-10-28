@@ -27,6 +27,7 @@
   order: 3
   name: "Leitura Curada"
   pinned: true
+  url: "https://leitura.mateussiil.com.br/"
   themes: [ia, produto]
   desc: "Curadoria de leitura por IA entregue em EPUB ou PDF, por e-mail ou no Kindle. Por convite."
   descEn: "AI-curated reading delivered as EPUB or PDF, by e-mail or to Kindle. Invite only."
@@ -35,9 +36,10 @@
   order: 4
   name: "Braglog"
   pinned: true
+  url: "https://braglog.mateussiil.com.br/"
   themes: [ia, devex]
-  desc: "Lê meu histórico do GitHub e escreve rascunhos de post para o LinkedIn. Nada é publicado sem eu aprovar."
-  descEn: "Reads my GitHub history and drafts LinkedIn posts. Nothing goes out without my approval."
+  desc: "Lê meu histórico do GitHub e escreve rascunhos de post para o LinkedIn. Nada é publicado sem eu aprovar. Tem app no celular."
+  descEn: "Reads my GitHub history and drafts LinkedIn posts. Nothing goes out without my approval. Comes with a mobile app."
 
 - id: fucador
   order: 5
@@ -45,3 +47,31 @@
   themes: [ia, devex]
   desc: "Revisa meus projetos toda semana e propõe melhorias num backlog versionado."
   descEn: "Reviews my projects every week and proposes improvements into a versioned backlog."
+
+- id: dash
+  order: 6
+  name: "Dash"
+  themes: [ia, dados]
+  desc: "Pergunte aos dados em português e receba gráfico, tabela ou KPI. A IA escreve a SQL, mas nunca a executa."
+  descEn: "Ask your data in plain Portuguese and get a chart, table or KPI. The AI writes the SQL but never runs it."
+
+- id: triagem
+  order: 7
+  name: "Triagem"
+  themes: [ia, produto]
+  desc: "Bot no WhatsApp que decide o destino de cada mensagem: Recorder, Kindle, agenda ou anotação."
+  descEn: "WhatsApp bot that decides where each message goes: Recorder, Kindle, calendar or a note."
+
+- id: extrato-unico
+  order: 8
+  name: "Extrato Único"
+  themes: [financeiro, dados]
+  desc: "Junta extratos e faturas de vários bancos, PF e PJ, numa base só, categorizada automaticamente."
+  descEn: "Brings statements and card bills from several banks, personal and business, into one auto-categorised base."
+
+- id: corita-rules
+  order: 9
+  name: "Corita Rules"
+  themes: [produto]
+  desc: "Monte o pôster das 10 regras de Corita Kent em qualquer idioma e fonte, do A4 ao A0, para imprimir em casa."
+  descEn: "Make Corita Kent's 10 rules poster in any language and font, from A4 to A0, ready to print at home."
